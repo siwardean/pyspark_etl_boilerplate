@@ -1,0 +1,1 @@
+# A sample ETL job class

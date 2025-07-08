@@ -1,0 +1,6 @@
+apiVersion: domino/v1
+kind: Run
+metadata:
+  name: etl-job
+spec:
+  ...

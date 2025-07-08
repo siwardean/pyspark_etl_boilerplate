@@ -1,0 +1,1 @@
+# Abstract ETL interface class
