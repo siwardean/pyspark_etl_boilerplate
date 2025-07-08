@@ -1,1 +1,2 @@
-# Pytest example for MyETLJob
+def test_dummy():
+    assert 1 + 1 == 2

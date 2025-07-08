@@ -3,4 +3,8 @@ kind: Run
 metadata:
   name: etl-job
 spec:
-  ...
+  title: "Run MyETLJob"
+  command: "spark-submit main.py --className MyETLJob --classPackage etl --confPath config/example.properties"
+  environment:
+    variables:
+      MLFLOW_TRACKING_URI: "https://your-domino-url.com/mlflow"
