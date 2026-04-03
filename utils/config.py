@@ -7,14 +7,9 @@ class Config:
 
     @staticmethod
     def getSparkSession(config):
-        builder = (
-            SparkSession.builder
-            .appName(config.get("spark.appname", "ETL Job"))
-            .master(config.get("spark.master", "local[*]"))
-        )
-        jars = config.get("spark.jars")
-        if jars:
-            builder = builder.config("spark.jars", jars)
+        builder = SparkSession.builder
+        for key, value in config.get_spark_context().items():
+            builder = builder.config(key, value)
         return builder.getOrCreate()
 
     @staticmethod
