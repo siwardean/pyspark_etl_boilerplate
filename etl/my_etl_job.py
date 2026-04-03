@@ -1,14 +1,9 @@
 from etl.etl_interface import ETLInterface
-from etl.etl_config import ETLConfig
 from utils.toolbox import drop_nulls
 import mlflow
 
 
 class MyETLJob(ETLInterface):
-    def __init__(self, config_path):
-        super().__init__(config_path)
-        self.config = ETLConfig(self.config_path)
-
     def extract(self):
         path = self.config.get("spark.targetfilepath")
         self.df = self.spark.read.option("header", "true").csv(path)
