@@ -3,13 +3,12 @@ from utils.config import Config
 
 class ETLInterface(ABC):
     def __init__(self):
-        self.spark = Config.getSparkSession()
+        self.spark = None
         self.config_path = None
         self.final_df = None
 
-    @abstractmethod
     def init(self):
-        pass
+        self.spark = Config.getSparkSession()
 
     @abstractmethod
     def extract(self):

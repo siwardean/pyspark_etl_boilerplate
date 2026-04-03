@@ -6,6 +6,7 @@ import mlflow
 
 class MyETLJob(ETLInterface):
     def init(self):
+        super().init()
         self.config = ETLConfig(self.config_path)
 
     def extract(self):
