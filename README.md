@@ -56,6 +56,7 @@ MyETLJob(conf_path)
                 ├── ETLConfig(conf_path)          parse .properties file
                 │       ├── read [SPARK_CONTEXT]
                 │       ├── read [COS]            store bucket placeholders
+                │       ├── read [DATABASE]       store database placeholders
                 │       ├── read [SPARK]
                 │       └── read [KAFKA]
                 │
@@ -111,6 +112,14 @@ spark.executor.memory=4g
 # Example: targetfilepath={bucket}/path  →  s3://my-bucket/path at runtime
 [COS]
 bucket=s3://my-data-bucket
+
+# ── Database ──────────────────────────────────────────────────────────────────
+# Keys defined here become placeholders usable in any other section value.
+# Example: url=jdbc:postgresql://{host}:{port}/{dbname}
+[DATABASE]
+host=localhost
+port=5432
+dbname=my_database
 
 # ── Job parameters ──────────────────────────────────────────────────────────
 [SPARK]
