@@ -9,6 +9,5 @@ if __name__ == "__main__":
 
     module = importlib.import_module(f"{package_name}.{class_name.lower()}")
     cls = getattr(module, class_name)
-    etl_instance = cls()
-    etl_instance.config_path = conf_path
+    etl_instance = cls(conf_path)
     etl_instance.run()

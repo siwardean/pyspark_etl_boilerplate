@@ -5,8 +5,8 @@ import mlflow
 
 
 class MyETLJob(ETLInterface):
-    def init(self):
-        super().init()
+    def __init__(self, config_path):
+        super().__init__(config_path)
         self.config = ETLConfig(self.config_path)
 
     def extract(self):
@@ -21,7 +21,6 @@ class MyETLJob(ETLInterface):
         self.final_df.write.mode("overwrite").parquet(output_path)
 
     def run(self):
-        self.init()
         with mlflow.start_run():
             mlflow.set_tag("job", "MyETLJob")
             mlflow.log_param("env", self.config.get("spark.env"))

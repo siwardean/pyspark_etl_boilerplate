@@ -2,13 +2,10 @@ from abc import ABC, abstractmethod
 from utils.config import Config
 
 class ETLInterface(ABC):
-    def __init__(self):
-        self.spark = None
-        self.config_path = None
-        self.final_df = None
-
-    def init(self):
+    def __init__(self, config_path):
+        self.config_path = config_path
         self.spark = Config.getSparkSession()
+        self.final_df = None
 
     @abstractmethod
     def extract(self):
@@ -23,7 +20,6 @@ class ETLInterface(ABC):
         pass
 
     def run(self):
-        self.init()
         self.extract()
         self.transform()
         self.load()
