@@ -8,6 +8,10 @@ class ETLInterface(ABC):
         self.final_df = None
 
     @abstractmethod
+    def init(self):
+        pass
+
+    @abstractmethod
     def extract(self):
         pass
 
@@ -20,6 +24,7 @@ class ETLInterface(ABC):
         pass
 
     def run(self):
+        self.init()
         self.extract()
         self.transform()
         self.load()

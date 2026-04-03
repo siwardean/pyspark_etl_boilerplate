@@ -5,8 +5,10 @@ import mlflow
 
 
 class MyETLJob(ETLInterface):
-    def extract(self):
+    def init(self):
         self.config = ETLConfig(self.config_path)
+
+    def extract(self):
         path = self.config.get("spark.targetfilepath")
         self.df = self.spark.read.option("header", "true").csv(path)
 
@@ -18,11 +20,12 @@ class MyETLJob(ETLInterface):
         self.final_df.write.mode("overwrite").parquet(output_path)
 
     def run(self):
+        self.init()
         with mlflow.start_run():
             mlflow.set_tag("job", "MyETLJob")
-            self.extract()
             mlflow.log_param("env", self.config.get("spark.env"))
             mlflow.log_param("load_type", self.config.get("spark.loadMethod"))
+            self.extract()
             self.transform()
             self.load()
             mlflow.log_metric("record_count", self.final_df.count())
