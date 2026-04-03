@@ -11,7 +11,14 @@ pyspark_etl_boilerplate/
 ├── main.py                    # Entry point — dynamically loads and runs any ETL job
 ├── requirements.txt           # Python dependencies
 ├── config/
-│   └── example.properties     # Configuration template
+│   ├── dev/
+│   │   └── example.properties # Development configuration
+│   ├── test/
+│   │   └── example.properties # Test configuration
+│   ├── qa/
+│   │   └── example.properties # QA configuration
+│   └── prod/
+│       └── example.properties # Production configuration
 ├── etl/
 │   ├── etl_interface.py       # Abstract base class all ETL jobs must extend
 │   ├── etl_config.py          # Config loader with COS placeholder resolution
@@ -34,7 +41,7 @@ pyspark_etl_boilerplate/
 ### Startup and class loading
 
 ```
-spark-submit main.py --className MyETLJob --classPackage etl --confPath config/example.properties
+spark-submit main.py --className MyETLJob --classPackage etl --confPath config/dev/example.properties
         │
         ▼
 AppArgsManagement           parse --className / --classPackage / --confPath
@@ -177,7 +184,7 @@ Run it without changing `main.py`:
 spark-submit main.py \
   --className MyNewJob \
   --classPackage etl \
-  --confPath config/mynewjob.properties
+  --confPath config/dev/example.properties
 ```
 
 ---
