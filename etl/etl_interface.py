@@ -1,10 +1,13 @@
 from abc import ABC, abstractmethod
-from pyspark.sql import SparkSession
+from etl.etl_config import ETLConfig
+from utils.config import Config
+
 
 class ETLInterface(ABC):
-    def __init__(self):
-        self.spark = SparkSession.builder.appName("ETL Job").getOrCreate()
-        self.config_path = None
+    def __init__(self, config_path):
+        self.config_path = config_path
+        self.config = ETLConfig(config_path)
+        self.spark = Config.getSparkSession(self.config)
         self.final_df = None
 
     @abstractmethod

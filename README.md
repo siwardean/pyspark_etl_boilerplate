@@ -1,144 +1,229 @@
-
 # PySpark ETL Boilerplate
 
-This project provides a modular and extensible PySpark ETL pipeline based on a legacy Scala Spark implementation, restructured for Python and modern data workflows with S3 and PostgreSQL.
+A modular, extensible PySpark ETL framework with MLflow tracking and Cloud Object Storage support.
 
-## 📁 Project Structure
+---
+
+## Project Structure
 
 ```
 pyspark_etl_boilerplate/
-├── main.py                        # Entry point for running ETL jobs
-├── requirements.txt              # Python dependencies
-├── README.md                     # Project documentation
-├── .github/workflows/ci.yml      # GitHub Actions CI setup
-├── .gitlab-ci.yml                # GitLab CI/CD pipeline
-├── etl/
-│   ├── etl_config.py             # Loads job configuration from .properties file
-│   ├── etl_interface.py          # Abstract base ETL class
-│   └── my_etl_job.py             # Sample ETL job implementing extract/transform/load
-├── utils/
-│   ├── args_management.py        # Argument parser (class name, package, config path)
-│   ├── config.py                 # Global job UID, SparkSession, staging path
-│   ├── date_management.py        # Date and time utilities
-│   ├── file_management.py        # Read/write CSV/Parquet and incremental logic
-│   ├── kafka_management.py       # Kafka writer utility (optional)
-│   └── toolbox.py                # DataFrame utility functions (case, skew join, filter...)
+├── main.py                    # Entry point — dynamically loads and runs any ETL job
+├── requirements.txt           # Python dependencies
 ├── config/
-│   └── example.properties        # Sample configuration file
-├── tests/
-│   └── test_my_etl_job.py        # Unit tests using pytest
-├── workflows/
-│   └── domino_job.yaml           # Example Domino Workflow job config
+│   ├── dev/
+│   │   └── example.properties # Development configuration
+│   ├── test/
+│   │   └── example.properties # Test configuration
+│   ├── qa/
+│   │   └── example.properties # QA configuration
+│   └── prod/
+│       └── example.properties # Production configuration
+├── etl/
+│   ├── etl_interface.py       # Abstract base class all ETL jobs must extend
+│   ├── etl_config.py          # Config loader with COS placeholder resolution
+│   └── my_etl_job.py          # Sample ETL job implementation
+├── utils/
+│   ├── args_management.py     # CLI argument parser
+│   ├── config.py              # SparkSession factory and job UID
+│   ├── date_management.py     # Date arithmetic utilities
+│   ├── file_management.py     # Parquet write helpers
+│   ├── kafka_management.py    # Optional Kafka sink
+│   └── toolbox.py             # DataFrame transformation utilities
+└── tests/
+    └── test_my_etl_job.py     # Unit tests (pytest)
 ```
 
-## 🚀 Running a Job
+---
 
-You can run a job using `spark-submit`:
+## ETL Execution Flow
+
+### Startup and class loading
+
+```
+spark-submit main.py --className MyETLJob --classPackage etl --confPath config/dev/example.properties
+        │
+        ▼
+AppArgsManagement           parse --className / --classPackage / --confPath
+        │
+        ▼
+importlib.import_module      dynamically import etl.myetljob
+        │
+        ▼
+cls(conf_path)               instantiate the job — triggers __init__ chain
+```
+
+### Construction (`__init__`)
+
+```
+MyETLJob(conf_path)
+        │
+        └── ETLInterface.__init__(conf_path)
+                │
+                ├── ETLConfig(conf_path)          parse .properties file
+                │       ├── read [SPARK_CONTEXT]
+                │       ├── read [COS]            store bucket placeholders
+                │       ├── read [DATABASE]       store database placeholders
+                │       ├── read [SPARK]
+                │       └── read [KAFKA]
+                │
+                └── Config.getSparkSession(config)
+                        └── iterate [SPARK_CONTEXT] key-value pairs
+                                └── builder.config(key, value) for each
+                                └── builder.getOrCreate()
+```
+
+### Run (`run`)
+
+```
+etl_instance.run()
+        │
+        ▼
+mlflow.start_run()
+        │
+        ├── log_param  env, load_type
+        │
+        ├── extract()
+        │       └── config.get("spark.targetfilepath")
+        │               └── _resolve()  →  {bucket} replaced by [COS] bucket value
+        │               └── spark.read.csv(resolved_path)
+        │
+        ├── transform()
+        │       └── drop_nulls(df)
+        │
+        ├── load()
+        │       └── final_df.write.parquet(output_path)
+        │
+        ├── log_metric  record_count
+        └── log_artifact  config file
+```
+
+---
+
+## Configuration File
+
+The `.properties` file is split into four sections:
+
+```ini
+# ── Spark session properties ────────────────────────────────────────────────
+# Any valid Spark config key can be added here. All entries are applied
+# to the SparkSession builder via builder.config(key, value).
+[SPARK_CONTEXT]
+spark.app.name=MyETLJob
+spark.master=local[*]
+spark.jars=/opt/spark/jars/postgresql-42.2.jar
+spark.executor.memory=4g
+
+# ── Cloud Object Storage ─────────────────────────────────────────────────────
+# Keys defined here become placeholders usable in any other section value.
+# Example: targetfilepath={bucket}/path  →  s3://my-bucket/path at runtime
+[COS]
+bucket=s3://my-data-bucket
+
+# ── Database ──────────────────────────────────────────────────────────────────
+# Keys defined here become placeholders usable in any other section value.
+# Example: url=jdbc:postgresql://{host}:{port}/{dbname}
+[DATABASE]
+host=localhost
+port=5432
+dbname=my_database
+
+# ── Job parameters ──────────────────────────────────────────────────────────
+[SPARK]
+env=dev
+targetstorage=cos
+targetfilepath={bucket}/input/data.csv
+loadMethod=full
+ispartitioned=true
+partitioncolumnlist=country,year
+
+# ── Kafka (optional) ─────────────────────────────────────────────────────────
+[KAFKA]
+insertintokafka=false
+```
+
+---
+
+## Implementing a New ETL Job
+
+Extend `ETLInterface` and implement the three abstract methods, then override `run()` to add MLflow tracking:
+
+```python
+from etl.etl_interface import ETLInterface
+from utils.toolbox import drop_nulls
+import mlflow
+
+
+class MyNewJob(ETLInterface):
+    def extract(self):
+        path = self.config.get("spark.targetfilepath")  # {bucket} resolved automatically
+        self.df = self.spark.read.parquet(path)
+
+    def transform(self):
+        self.final_df = drop_nulls(self.df)
+
+    def load(self):
+        out = self.config.get("spark.targetfilepath") + "_output"
+        self.final_df.write.mode("overwrite").parquet(out)
+
+    def run(self):
+        with mlflow.start_run():
+            mlflow.set_tag("job", "MyNewJob")
+            mlflow.log_param("env", self.config.get("spark.env"))
+            mlflow.log_param("load_type", self.config.get("spark.loadMethod"))
+            self.extract()
+            self.transform()
+            self.load()
+            mlflow.log_metric("record_count", self.final_df.count())
+            mlflow.log_artifact(self.config_path)
+```
+
+Run it without changing `main.py`:
 
 ```bash
-spark-submit   --master local[*]   main.py   --className MyETLJob   --classPackage etl   --confPath config/example.properties
+spark-submit main.py \
+  --className MyNewJob \
+  --classPackage etl \
+  --confPath config/dev/example.properties
 ```
 
-## ⚙️ Configuration File Example
+---
 
-Create a file `config/example.properties` with the following content:
+## MLflow Tracking
 
-```properties
-# Spark environment name
-spark.env=dev
+Every run logs the following to the configured MLflow tracking server:
 
-# Output mode (file or table)
-spark.targetstorage=file
-spark.targetfilepath=s3://your-bucket/output/my_data
+| Type | Key | Value |
+|------|-----|-------|
+| Tag | `job` | class name |
+| Param | `env` | value of `spark.env` |
+| Param | `load_type` | value of `spark.loadMethod` |
+| Metric | `record_count` | number of rows written |
+| Artifact | — | the `.properties` config file |
 
-# Load method (full or incremental)
-spark.loadMethod=full
+Set the tracking URI before running:
 
-# Enable partitioning
-spark.ispartitioned=true
-spark.partitioncolumnlist=country,year
-
-# Optional Kafka support
-kafka.insertintokafka=false
-# kafka.destinationtopic=my-topic
-# kafka.brokerlist=localhost:9092
+```bash
+export MLFLOW_TRACKING_URI=http://your-mlflow-server:5000
 ```
 
-## 🧪 Running Tests
+---
 
-Make sure `pytest` is installed:
+## Running Tests
 
 ```bash
 pip install -r requirements.txt
 pytest tests/
 ```
 
-## ⚙️ CI/CD
-
-### GitHub Actions
-Defined in `.github/workflows/ci.yml`:
-- Runs tests and linting
-- Validates configuration
-
-### GitLab CI
-Configured in `.gitlab-ci.yml`:
-- Includes a test stage
-- Easy to adapt for Domino job triggers
-
-## 🧠 MLFlow & Domino Orchestration
-
-This project supports MLFlow as the orchestrator:
-
-### MLFlow Job Example
-
-Inside your ETL job (e.g., `my_etl_job.py`):
-
-```python
-import mlflow
-
-with mlflow.start_run():
-    mlflow.set_tag("job", "MyETLJob")
-    mlflow.log_param("env", ETLConfig.getEnv())
-    mlflow.log_param("load_type", ETLConfig.getLoadType())
-    mlflow.log_metric("record_count", finalDfToLoad.count())
-    df.write.parquet(output_path)  # or any save logic
-    mlflow.log_artifact(config_path)
-```
-
-### Domino Workflow YAML
-
-Save as `workflows/domino_job.yaml`:
-
-```yaml
-apiVersion: domino/v1
-kind: Run
-metadata:
-  name: etl-job
-spec:
-  title: "Run MyETLJob"
-  command: "spark-submit main.py --className MyETLJob --classPackage etl --confPath config/example.properties"
-  environment:
-    variables:
-      MLFLOW_TRACKING_URI: "https://your-domino-url.com/mlflow"
-```
-
-## 📦 Requirements
-
-```text
-pyspark
-kafka-python
-boto3
-mlflow
-```
-
-These are listed in `requirements.txt`.
-
-## 🛠 Development Tips
-
-- Implement new jobs by extending `ETLInterface` in the `etl/` folder.
-- Use `etl_config.py` to define and validate runtime behavior.
-- Data sources currently supported: CSV/Parquet from S3, PostgreSQL (stub), Kafka (optional).
-
 ---
 
-For additional help or contribution, feel free to open an issue or PR.
+## Requirements
+
+```
+pyspark
+mlflow
+kafka-python
+boto3
+pytest
+```
