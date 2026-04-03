@@ -56,8 +56,8 @@ MyETLJob(conf_path)
                 ├── ETLConfig(conf_path)          parse .properties file
                 │       ├── read [SPARK_CONTEXT]
                 │       ├── read [COS]            store bucket placeholders
-                │       ├── read [spark]
-                │       └── read [kafka]
+                │       ├── read [SPARK]
+                │       └── read [KAFKA]
                 │
                 └── Config.getSparkSession(config)
                         └── iterate [SPARK_CONTEXT] key-value pairs
@@ -112,8 +112,8 @@ spark.executor.memory=4g
 [COS]
 bucket=s3://my-data-bucket
 
-# ── Job parameters ───────────────────────────────────────────────────────────
-[spark]
+# ── Job parameters ──────────────────────────────────────────────────────────
+[SPARK]
 env=dev
 targetstorage=cos
 targetfilepath={bucket}/input/data.csv
@@ -122,7 +122,7 @@ ispartitioned=true
 partitioncolumnlist=country,year
 
 # ── Kafka (optional) ─────────────────────────────────────────────────────────
-[kafka]
+[KAFKA]
 insertintokafka=false
 ```
 
