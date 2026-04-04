@@ -86,6 +86,7 @@ Run them in order:
 | 01 | `01_data_exploration` | Guided profiling — nulls, duplicates, outliers, RI | Yes |
 | 02 | `02_etl_exercise` | Exercise — TODOs for students to complete | Yes |
 | 03 | `03_etl_solution` | Complete solution with inline explanations | Instructor only |
+| 04 | `04_dataframe_api_exercise` | 30-min exercise: rewrite a complex SQL query using the DataFrame API | Yes |
 
 ---
 
