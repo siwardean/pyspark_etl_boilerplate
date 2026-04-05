@@ -1,47 +1,81 @@
-# RetailCo Data Engineering Exercise
+# DreamAirlines — Data Engineering Training
 
-A hands-on Databricks exercise demonstrating core data engineering concepts:
-raw data ingestion, data profiling, data quality remediation, and building
-a star schema data mart for a reporting pipeline.
-
----
-
-## Scenario
-
-You are a data engineer at **DreamAirlines**, a Portuguese travel agency
-operating from Lisbon, Porto and Faro. The analytics team needs a consolidated
-revenue view combining flights, hotels, car rentals and insurance into a single
-queryable table to power BI dashboards.
-
-Your job is to load the source CSV files, explore and profile the data,
-and build an analytics layer on top of the existing star schema.
+> This folder contains the hands-on training material for this repository.
+> It is intentionally kept separate from the production ETL boilerplate so
+> the two can evolve independently. Think of it as the flight simulator
+> before you take the controls of the real aircraft.
 
 ---
 
-## Data Sources (Raw Layer)
+```
+Good morning, Agent.
 
-CSV files in `data/dreamAirlines_DW/` loaded by `00_setup_data` into Delta tables.
+Your target: DreamAirlines — a Portuguese travel agency running three offices
+in Lisbon, Porto and Faro. Their data is scattered across 14 source tables
+covering flights, hotels, car rentals and insurance. Nobody has ever joined
+them together. The analytics team is flying blind.
 
-| Table | Rows | Description |
+This is your first data engineering assignment.
+Your mission, should you choose to accept it, is to ingest the raw data,
+expose its flaws, and deliver a clean, consolidated revenue pipeline that
+the business can actually trust.
+
+The source files are in data/dreamAirlines_DW/.
+The Spark cluster is standing by.
+This README will not self-destruct — but it will hold you accountable.
+
+Good luck.
+```
+
+---
+
+## What is this training about?
+
+This is an applied illustration of the ETL boilerplate defined in this
+repository. Every pattern you use here — `ETLInterface`, `ETLConfig`,
+`[SPARK_CONTEXT]`, MLflow tracking — maps directly to a real file in `etl/`
+or `utils/`. The exercises are designed to be your reference point the first
+time you build a production job on top of this framework.
+
+By the end you will have built a working daily ETL pipeline, profiled real
+data quality issues, written the same transformation twice (SQL then DataFrame
+API), and used MLflow to detect and recover from simulated pipeline failures.
+
+---
+
+## The data
+
+DreamAirlines operates a classic star schema data warehouse covering
+**October 2015 to September 2018**. The raw CSV files live in
+`data/dreamAirlines_DW/` and are loaded into Delta tables by notebook `00`.
+
+### Dimensions
+
+| Table | Rows | What it describes |
 |---|---|---|
-| `raw.dim_travel_booking` | 99 | Core booking entity — origin, destination, class, dates |
-| `raw.dim_customer` | 99 | Customer master — name, type, nationality, city |
+| `raw.dim_travel_booking` | 99 | Core booking — origin, destination, class, dates |
+| `raw.dim_customer` | 99 | Customer master — name, type, nationality |
 | `raw.dim_employee` | 15 | Staff across the three agencies |
 | `raw.dim_travel_agency` | 3 | Lisbon, Porto, Faro offices |
 | `raw.dim_hotel` | 21 | Hotel properties by country |
 | `raw.dim_car` | 25 | Vehicle inventory by rental company |
 | `raw.dim_insurance` | 6 | Insurance products (Standard / Plus / Full / Basic) |
-| `raw.dim_hotel_booking` | 83 | Hotel booking details linked to travel bookings |
-| `raw.dim_car_renting` | 88 | Car rental details linked to travel bookings |
+| `raw.dim_hotel_booking` | 83 | Hotel booking details |
+| `raw.dim_car_renting` | 88 | Car rental details |
 | `raw.dim_date` | 10 958 | Full calendar dimension 2000–2029 |
-| `raw.fact_travel_booking` | 99 | Flight revenue — `AMT_Travel` |
-| `raw.fact_hotel_booking` | 83 | Hotel revenue — `AMT_Accomodation` |
-| `raw.fact_car_renting` | 88 | Car rental revenue — `AMT_Rental`, `AMT_DailyRate` |
-| `raw.fact_insurance` | 155 | Insurance revenue — `AMT_Travel_Insurance`, `AMT_Car_Insurance` |
+
+### Facts
+
+| Table | Rows | Revenue column |
+|---|---|---|
+| `raw.fact_travel_booking` | 99 | `AMT_Travel` |
+| `raw.fact_hotel_booking` | 83 | `AMT_Accomodation` |
+| `raw.fact_car_renting` | 88 | `AMT_Rental`, `AMT_DailyRate` |
+| `raw.fact_insurance` | 155 | `AMT_Travel_Insurance`, `AMT_Car_Insurance` |
 
 ---
 
-## Target Analytics Model
+## Target: what you will build
 
 ```
 SOURCE (raw schema)                        TARGET (analytics schema)
@@ -64,55 +98,87 @@ raw.fact_insurance      ┘                  customer_type      STRING
 
 ---
 
-## Notebooks
+## The notebooks — run them in order
 
-Run them in order:
-
-| # | Notebook | Role | Share with students? |
+| # | Notebook | What you do | Share? |
 |---|---|---|---|
-| 00 | `00_setup_data` | Generates synthetic raw Delta tables | Yes |
-| 01 | `01_data_exploration` | Guided profiling — nulls, duplicates, outliers, RI | Yes |
-| 02 | `02_etl_exercise` | Exercise — TODOs for students to complete | Yes |
-| 03 | `03_etl_solution` | Complete solution with inline explanations | Instructor only |
-| 04 | `04_dataframe_api_exercise` | 30-min exercise: rewrite a complex SQL query using the DataFrame API | Yes |
+| `00` | `00_setup_data` | Load all 14 CSV files into `raw.*` Delta tables | Yes |
+| `01` | `01_data_exploration` | Profile the data — nulls, integrity, distributions | Yes |
+| `02` | `02_etl_exercise` | Build the analytics table — 4 TODOs to complete | Yes |
+| `03` | `03_etl_solution` | Full solution with design notes | Instructor only |
+| `04` | `04_dataframe_api_exercise` | Rewrite a SQL job using the DataFrame API + MLflow gap tracker | Yes |
+
+Notebooks `02` and `04` follow the exact class structure from the boilerplate:
+
+```python
+class YourETLJob(ETLInterface):
+    def extract(self): ...      # read sources
+    def transform(self): ...    # your work lives here
+    def load(self): ...         # write output
+    def run(self): ...          # MLflow wraps it all
+```
+
+You fill in `transform()`. Everything else is already wired up.
 
 ---
 
-## Data Quality Issues to Discover
+## Data quality issues waiting for you in notebook 01
 
-| # | Issue | Table | Decision |
+Part of the job is finding these before you write a single transformation:
+
+| # | Issue | Table | What to do |
 |---|---|---|---|
-| Q1 | `FK_TravelBooking` nullable in `fact_car_renting` | fact_car_renting | Use LEFT JOIN + COALESCE(AMT, 0) |
-| Q2 | All AMT_ columns may be null (no product purchased) | all facts | COALESCE all amounts to 0 |
-| Q3 | Dates stored as integers (YYYYMMDD) in fact tables | all facts | Join via dim_date.PK_Date |
-| Q4 | dim_travel_booking joins dim_customer on name string | dim tables | Join on DSC_Customer, not PK |
-| Q5 | HashColumn, Load_ID, Insert_Date are ETL audit fields | all dims | Drop from analytics output |
+| Q1 | `FK_TravelBooking` is nullable | `fact_car_renting` | LEFT JOIN + `COALESCE(AMT, 0)` |
+| Q2 | All `AMT_` columns can be null | all facts | `COALESCE` before aggregating |
+| Q3 | Dates are integers (`YYYYMMDD`) | all facts | Join via `dim_date.PK_Date` |
+| Q4 | `dim_customer` joins on name string, not PK | dim tables | Join on `DSC_Customer` |
+| Q5 | `HashColumn`, `Load_ID`, audit dates are ETL noise | all dims | Drop from analytics output |
 
 ---
 
-## Learning Objectives
+## Notebook 04 — the MLflow tracker
 
-After completing this exercise you will be able to:
-
-1. **Profile raw data** — identify nulls, duplicates, outliers, and referential integrity breaks
-2. **Apply data quality rules** — make and document remediation decisions
-3. **Build a date dimension** — generate a calendar table programmatically with PySpark
-4. **Apply surrogate keys** — use `row_number()` windows for deterministic integer keys
-5. **Design a star schema** — separate measures (fact) from context (dimensions)
-6. **Compute financial metrics** — chain column expressions for revenue, discount, margin
-7. **Validate a data mart** — referential integrity checks and financial consistency checks
-8. **Write reporting queries** — join across a star schema for BI-ready aggregations
+Once your daily job is running, notebook `04` simulates two weeks of execution
+with three injected failures, then shows how to query MLflow to find the gaps
+and rerun only the missing dates. This pattern — log every run, query for gaps,
+backfill — is the operational backbone of any reliable data pipeline.
 
 ---
 
-## Reporting Use Cases Enabled by the Mart
+## Configuration
 
-Once built, the mart directly answers:
+The training notebooks use:
 
-- Monthly and quarterly revenue trends
-- Margin analysis by product category and subcategory
-- Customer segment contribution (Premium / Standard / Basic)
-- Country-level revenue breakdown
-- Weekend vs weekday purchasing patterns
-- Top customers by net revenue
-- Brand performance within categories
+```
+config/dev/training_notebook.properties
+```
+
+A copy of `example.properties` with `spark.app.name=training_notebook`.
+Adjust `DATA_PATH` in `00_setup_data` to point to your local clone of the repo.
+
+---
+
+## Scala archive — `scala/`
+
+The `scala/` folder holds the original Databricks exercises from the 2019
+DreamAirlines training session. They are kept here as a reference and a
+reminder of how far the tooling has come since then.
+
+| File | Description |
+|---|---|
+| `exo_cert_siwar.scala` | Original certification exercise |
+| `Exo_certif.scala` | Shared exercise from the training |
+
+---
+
+## Learning objectives
+
+After completing all four notebooks you will be able to:
+
+1. Load CSV sources into a Delta Lake raw layer
+2. Profile data quality — nulls, duplicates, referential integrity
+3. Build an analytics table by joining across a star schema
+4. Apply `COALESCE`, LEFT JOINs, and aggregation with the DataFrame API
+5. Explain why the DataFrame API is preferable to SQL for production ETL
+6. Use MLflow to track daily runs, detect gaps, and trigger backfills
+7. Package any transformation inside the `ETLInterface` structure for production deployment
