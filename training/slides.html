@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DreamAirlines — Data Engineering Training</title>
+  <style>
+    /* ── reset ─────────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── palette ───────────────────────────────────────────────────────────── */
+    :root {
+      --purple:       #6D28D9;
+      --purple-light: #8B5CF6;
+      --purple-dark:  #3B0764;
+      --purple-muted: #EDE9FE;
+      --black:        #0F0F0F;
+      --charcoal:     #1F1F2E;
+      --gray:         #6B7280;
+      --gray-light:   #F3F0FF;
+      --white:        #FFFFFF;
+    }
+
+    /* ── typography ────────────────────────────────────────────────────────── */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: #1a1a2e;
+      color: var(--black);
+      line-height: 1.5;
+    }
+
+    /* ── slide deck wrapper ─────────────────────────────────────────────────── */
+    .deck {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── individual slide ───────────────────────────────────────────────────── */
+    .slide {
+      display: none;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      background: var(--white);
+      position: absolute;
+      top: 0; left: 0;
+    }
+    .slide.active { display: flex; }
+
+    /* ── slide header band ──────────────────────────────────────────────────── */
+    .slide-header {
+      background: var(--purple-dark);
+      padding: 22px 56px 18px;
+      display: flex;
+      align-items: baseline;
+      gap: 18px;
+      flex-shrink: 0;
+    }
+    .slide-tag {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--purple-light);
+    }
+    .slide-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    /* ── slide body ─────────────────────────────────────────────────────────── */
+    .slide-body {
+      flex: 1;
+      padding: 40px 56px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ── title slide specifics ──────────────────────────────────────────────── */
+    .slide-title-screen {
+      background: var(--white);
+    }
+    .title-screen-inner {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 0 56px;
+      gap: 0;
+    }
+    .title-kicker {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--purple);
+      margin-bottom: 16px;
+    }
+    .title-main {
+      font-size: 64px;
+      font-weight: 800;
+      color: var(--black);
+      line-height: 1.05;
+      margin-bottom: 4px;
+    }
+    .title-main span { color: var(--purple); }
+    .title-sub {
+      font-size: 22px;
+      font-weight: 400;
+      color: var(--gray);
+      margin-bottom: 40px;
+    }
+    .mission-box {
+      background: var(--charcoal);
+      border-left: 4px solid var(--purple-light);
+      border-radius: 6px;
+      padding: 24px 28px;
+      max-width: 640px;
+    }
+    .mission-box p {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px;
+      color: #C4B5FD;
+      line-height: 1.8;
+    }
+    .mission-box .mission-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--purple-light);
+      margin-bottom: 10px;
+      opacity: 0.7;
+    }
+    .title-footer {
+      background: var(--purple-dark);
+      padding: 14px 56px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .title-footer span {
+      font-size: 12px;
+      color: #C4B5FD;
+      letter-spacing: 1px;
+    }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--purple-light); }
+
+    /* ── two-column layout ──────────────────────────────────────────────────── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      flex: 1;
+    }
+    .three-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      flex: 1;
+    }
+
+    /* ── card ───────────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--gray-light);
+      border-radius: 8px;
+      padding: 20px 22px;
+      border-top: 3px solid var(--purple);
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--purple);
+      margin-bottom: 12px;
+    }
+    .card p, .card li {
+      font-size: 13.5px;
+      color: var(--charcoal);
+      line-height: 1.6;
+    }
+    .card ul { padding-left: 16px; }
+    .card ul li { margin-bottom: 4px; }
+
+    /* ── code block ─────────────────────────────────────────────────────────── */
+    pre, code {
+      font-family: 'Courier New', Courier, monospace;
+    }
+    .code-block {
+      background: var(--charcoal);
+      border-radius: 6px;
+      padding: 18px 22px;
+      overflow: hidden;
+    }
+    .code-block pre {
+      font-size: 12px;
+      color: #C4B5FD;
+      line-height: 1.7;
+    }
+    .code-block pre .kw  { color: #A78BFA; }
+    .code-block pre .cm  { color: #6D6D8F; }
+    .code-block pre .str { color: #86EFAC; }
+    .code-block pre .fn  { color: #FDE68A; }
+
+    /* ── section heading ────────────────────────────────────────────────────── */
+    .section-heading {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--purple);
+      border-bottom: 2px solid var(--purple-muted);
+      padding-bottom: 6px;
+      margin-bottom: 14px;
+    }
+
+    /* ── step list ──────────────────────────────────────────────────────────── */
+    .step-list { display: flex; flex-direction: column; gap: 10px; }
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .step-num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--purple);
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .step-content { flex: 1; }
+    .step-content strong {
+      font-size: 14px;
+      color: var(--black);
+      display: block;
+      margin-bottom: 2px;
+    }
+    .step-content span {
+      font-size: 12.5px;
+      color: var(--gray);
+    }
+
+    /* ── table ──────────────────────────────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: var(--purple-dark);
+      color: white;
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+    td { padding: 7px 12px; border-bottom: 1px solid #E9E4FF; color: var(--charcoal); }
+    tr:nth-child(even) td { background: var(--gray-light); }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .badge-purple { background: var(--purple-muted); color: var(--purple-dark); }
+    .badge-green  { background: #DCFCE7; color: #166534; }
+    .badge-gray   { background: #F3F4F6; color: #374151; }
+
+    /* ── flow diagram ───────────────────────────────────────────────────────── */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      background: var(--gray-light);
+      border-radius: 8px;
+      padding: 14px 20px;
+    }
+    .flow-step {
+      background: var(--purple);
+      color: white;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .flow-step.highlight {
+      background: var(--charcoal);
+      border: 2px solid var(--purple-light);
+    }
+    .flow-arrow {
+      color: var(--purple-light);
+      font-size: 18px;
+      padding: 0 8px;
+      font-weight: 300;
+    }
+    .flow-note {
+      font-size: 10px;
+      color: var(--purple);
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-align: center;
+      margin-top: 4px;
+    }
+
+    /* ── pill tag ───────────────────────────────────────────────────────────── */
+    .pill {
+      display: inline-block;
+      background: var(--purple-muted);
+      color: var(--purple-dark);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: 'Courier New', monospace;
+      margin-right: 4px;
+    }
+
+    /* ── navigation ─────────────────────────────────────────────────────────── */
+    .nav {
+      position: fixed;
+      bottom: 24px;
+      right: 32px;
+      display: flex;
+      gap: 8px;
+      z-index: 100;
+    }
+    .nav-btn {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: var(--purple-dark);
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .nav-btn:hover { background: var(--purple); }
+    .nav-btn:disabled { background: #D1D5DB; cursor: default; }
+
+    /* ── slide counter ──────────────────────────────────────────────────────── */
+    .slide-counter {
+      position: fixed;
+      bottom: 28px;
+      left: 56px;
+      font-size: 12px;
+      color: var(--gray);
+      letter-spacing: 1px;
+      z-index: 100;
+    }
+
+    /* ── divider ─────────────────────────────────────────────────────────────── */
+    hr.divider {
+      border: none;
+      border-top: 2px solid var(--purple-muted);
+      margin: 4px 0;
+    }
+
+    /* ── highlight text ──────────────────────────────────────────────────────── */
+    .hl { color: var(--purple); font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+       SLIDE 1 — TITLE / INTRO
+       ════════════════════════════════════════════════════════════════════════ -->
+  <section class="slide slide-title-screen active">
+    <div class="title-screen-inner">
+      <p class="title-kicker">Data Engineering Training</p>
+      <h1 class="title-main">Dream<span>Airlines</span></h1>
+      <p class="title-sub">Your first real pipeline. Four notebooks. One mission.</p>
+
+      <div class="mission-box">
+        <p class="mission-label">// incoming transmission</p>
+        <p>
+          Good morning, Agent.<br><br>
+          Your target: <strong style="color:#E9D5FF">DreamAirlines</strong> — a Portuguese travel agency
+          with three offices and data scattered across 14 source tables.<br>
+          Nobody has ever joined them together.<br>
+          The analytics team is flying blind.<br><br>
+          This is your first data engineering assignment.<br>
+          Your mission, should you choose to accept it, is to <strong style="color:#E9D5FF">ingest
+          the raw data, expose its flaws, and deliver a clean revenue pipeline</strong>
+          the business can actually trust.<br><br>
+          The Spark cluster is standing by.
+        </p>
+      </div>
+    </div>
+
+    <div class="title-footer">
+      <div class="dot"></div>
+      <span>Databricks &nbsp;·&nbsp; PySpark &nbsp;·&nbsp; Delta Lake &nbsp;·&nbsp; MLflow</span>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+       SLIDE 2 — PROJECT STRUCTURE
+       ════════════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-tag">The Boilerplate</span>
+      <span class="slide-title">How every ETL job in this repo is structured</span>
+    </div>
+
+    <div class="slide-body">
+      <div class="two-col" style="align-items: start;">
+
+        <div style="display:flex; flex-direction:column; gap:18px;">
+          <div>
+            <p class="section-heading">Repository layout</p>
+            <div class="code-block">
+              <pre>
+pyspark_etl_boilerplate/
+├── main.py              <span class="cm"># entry point</span>
+├── config/
+│   ├── dev/             <span class="cm"># per-environment</span>
+│   ├── test/
+│   ├── qa/
+│   └── prod/
+├── etl/
+│   ├── etl_interface.py <span class="cm"># abstract base</span>
+│   ├── etl_config.py    <span class="cm"># config loader</span>
+│   └── my_etl_job.py    <span class="cm"># sample job</span>
+└── utils/
+    ├── config.py        <span class="cm"># SparkSession</span>
+    ├── toolbox.py
+    └── ...</pre>
+            </div>
+          </div>
+
+          <div>
+            <p class="section-heading">Config sections</p>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <span class="pill">[SPARK_CONTEXT]</span>
+              <span class="pill">[COS]</span>
+              <span class="pill">[DATABASE]</span>
+              <span class="pill">[SPARK]</span>
+              <span class="pill">[KAFKA]</span>
+            </div>
+            <p style="font-size:12px; color:var(--gray); margin-top:8px;">
+              All Spark session properties are sourced from <code>[SPARK_CONTEXT]</code>.<br>
+              Placeholders like <code>{bucket}</code> are resolved from <code>[COS]</code> at read time.
+            </p>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:18px;">
+          <div>
+            <p class="section-heading">Execution flow</p>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div style="text-align:center; font-size:11px; color:var(--gray); letter-spacing:1px; text-transform:uppercase;">spark-submit main.py --className … --confPath …</div>
+              <div class="flow">
+                <div class="flow-step">__init__</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">extract()</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step highlight">transform()</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">load()</div>
+              </div>
+              <div class="flow-note">↑ your work lives here</div>
+            </div>
+          </div>
+
+          <div>
+            <p class="section-heading">Every job follows the same contract</p>
+            <div class="code-block">
+              <pre>
+<span class="kw">class</span> <span class="fn">MyETLJob</span>(ETLInterface):
+
+    <span class="kw">def</span> <span class="fn">extract</span>(self):
+        <span class="cm"># read from source</span>
+
+    <span class="kw">def</span> <span class="fn">transform</span>(self):
+        <span class="cm"># clean, join, aggregate</span>
+
+    <span class="kw">def</span> <span class="fn">load</span>(self):
+        <span class="cm"># write output</span>
+
+    <span class="kw">def</span> <span class="fn">run</span>(self):
+        <span class="kw">with</span> mlflow.start_run():
+            self.extract()
+            self.transform()
+            self.load()</pre>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+       SLIDE 3 — THE ASSIGNMENT
+       ════════════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-tag">The Assignment</span>
+      <span class="slide-title">Four notebooks — one pipeline</span>
+    </div>
+
+    <div class="slide-body">
+      <div class="two-col" style="align-items: start;">
+
+        <!-- left: notebook steps -->
+        <div>
+          <p class="section-heading">Run in order</p>
+          <div class="step-list">
+            <div class="step">
+              <div class="step-num">00</div>
+              <div class="step-content">
+                <strong>Setup — load the data</strong>
+                <span>14 CSV files → <code>raw.*</code> Delta tables. One command, done.</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">01</div>
+              <div class="step-content">
+                <strong>Explore — profile the data</strong>
+                <span>Find nulls, broken foreign keys, integer dates, audit noise. Document every finding.</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">02</div>
+              <div class="step-content">
+                <strong>Build — complete the ETL job</strong>
+                <span>Fill in 4 TODOs inside <code>transform()</code>. Everything else is wired up.</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">04</div>
+              <div class="step-content">
+                <strong>Upgrade — rewrite SQL as DataFrame API</strong>
+                <span>Convert a working SQL job to the DataFrame API. Then watch MLflow catch pipeline failures.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- right: target schema + data sources -->
+        <div style="display:flex; flex-direction:column; gap:18px;">
+          <div>
+            <p class="section-heading">What you will build</p>
+            <div class="code-block">
+              <pre>
+analytics.<span class="fn">booking_revenue_summary</span>
+──────────────────────────────────
+booking_date       <span class="kw">DATE</span>
+travel_agency      <span class="kw">STRING</span>
+destination        <span class="kw">STRING</span>
+travel_class       <span class="kw">STRING</span>
+customer_type      <span class="kw">STRING</span>
+num_bookings       <span class="kw">LONG</span>
+travel_revenue     <span class="kw">DOUBLE</span>
+hotel_revenue      <span class="kw">DOUBLE</span>
+car_revenue        <span class="kw">DOUBLE</span>
+insurance_revenue  <span class="kw">DOUBLE</span>
+total_revenue      <span class="kw">DOUBLE</span>
+revenue_tier       <span class="kw">STRING</span>  <span class="cm">High/Medium/Low</span></pre>
+            </div>
+          </div>
+
+          <div>
+            <p class="section-heading">Data quality issues to find first</p>
+            <table>
+              <tr><th>#</th><th>Issue</th><th>Fix</th></tr>
+              <tr><td>Q1</td><td>Nullable FK in <code>fact_car_renting</code></td><td><span class="badge badge-purple">LEFT JOIN</span></td></tr>
+              <tr><td>Q2</td><td>Null amounts across all facts</td><td><span class="badge badge-purple">COALESCE → 0</span></td></tr>
+              <tr><td>Q3</td><td>Dates as integers (YYYYMMDD)</td><td><span class="badge badge-purple">join dim_date</span></td></tr>
+              <tr><td>Q4</td><td>Customer join is on name, not PK</td><td><span class="badge badge-purple">DSC_Customer</span></td></tr>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+       SLIDE 4 — ANSWERS / KEY TAKEAWAYS
+       ════════════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-tag">Solutions &amp; Takeaways</span>
+      <span class="slide-title">What the completed pipeline looks like</span>
+    </div>
+
+    <div class="slide-body">
+      <div class="two-col" style="align-items: start;">
+
+        <div style="display:flex; flex-direction:column; gap:18px;">
+          <div>
+            <p class="section-heading">The four TODOs — solved</p>
+            <div class="step-list">
+              <div class="step">
+                <div class="step-num" style="background:var(--purple-dark); font-size:10px;">T1</div>
+                <div class="step-content">
+                  <strong>Join chain</strong>
+                  <span><code>.join(dim_date, …, "inner")</code> then filter by date, then <code>.join(dim_customer, …)</code>, then four <code>"left"</code> joins for the facts</span>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-num" style="background:var(--purple-dark); font-size:10px;">T2</div>
+                <div class="step-content">
+                  <strong>COALESCE amounts</strong>
+                  <span><code>F.coalesce(F.col("AMT_Travel"), F.lit(0))</code> — applied right after the joins, before any aggregation</span>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-num" style="background:var(--purple-dark); font-size:10px;">T3</div>
+                <div class="step-content">
+                  <strong>Aggregate</strong>
+                  <span><code>.groupBy(date, agency, country, class, customer_type)</code><br><code>.agg(F.countDistinct(…), F.round(F.sum(…), 2), …)</code></span>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-num" style="background:var(--purple-dark); font-size:10px;">T4</div>
+                <div class="step-content">
+                  <strong>Revenue tier</strong>
+                  <span><code>F.when(col >= 2000, "High").when(col >= 500, "Medium").otherwise("Low")</code></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:18px;">
+
+          <div>
+            <p class="section-heading">DataFrame API vs SQL — the key difference</p>
+            <table>
+              <tr><th></th><th>SQL</th><th>DataFrame API</th></tr>
+              <tr><td>Multi-step logic</td><td>CTEs in one string</td><td>Named variables — inspect any step</td></tr>
+              <tr><td>Reuse a column</td><td>Must repeat formula</td><td>Compute once, reference by name</td></tr>
+              <tr><td>Debug mid-pipeline</td><td>Rewrite whole query</td><td><code>display(step)</code> anywhere</td></tr>
+              <tr><td>IDE support</td><td>Plain string</td><td>Autocomplete + type hints</td></tr>
+            </table>
+          </div>
+
+          <div>
+            <p class="section-heading">MLflow — why every run gets logged</p>
+            <div class="code-block" style="padding: 14px 20px;">
+              <pre>
+<span class="cm"># Find gaps in the daily pipeline</span>
+runs = mlflow.search_runs(
+    filter_string=<span class="str">"tags.job = 'DailyBookingRevenueJob'"</span>
+)
+failed = runs[runs[<span class="str">"status"</span>] != <span class="str">"FINISHED"</span>]
+<span class="cm"># → reruns only the missing dates</span></pre>
+            </div>
+            <p style="font-size:12px; color:var(--gray); margin-top:8px;">
+              Log every run — even failures. Query the gaps. Backfill with one loop.
+              <br>This is the operational backbone of any reliable daily pipeline.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /deck -->
+
+
+<!-- ── navigation ──────────────────────────────────────────────────────────── -->
+<div class="slide-counter" id="counter">1 / 4</div>
+<div class="nav">
+  <button class="nav-btn" id="prev" onclick="navigate(-1)" disabled>&#8592;</button>
+  <button class="nav-btn" id="next" onclick="navigate(1)">&#8594;</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  const prev = document.getElementById('prev');
+  const next = document.getElementById('next');
+  let current = 0;
+
+  function navigate(dir) {
+    slides[current].classList.remove('active');
+    current = Math.max(0, Math.min(slides.length - 1, current + dir));
+    slides[current].classList.add('active');
+    counter.textContent = `${current + 1} / ${slides.length}`;
+    prev.disabled = current === 0;
+    next.disabled = current === slides.length - 1;
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigate(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   navigate(-1);
+  });
+</script>
+
+</body>
+</html>
