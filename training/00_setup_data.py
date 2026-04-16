@@ -6,7 +6,7 @@
 # MAGIC # 00 — Setup: Load DreamAirlines Data
 # MAGIC
 # MAGIC This notebook loads the **DreamAirlines** CSV source files into Delta tables
-# MAGIC in the `raw` schema. Run it once before starting any exercise.
+# MAGIC in the `dream_airlines_dw` schema. Run it once before starting any exercise.
 # MAGIC
 # MAGIC ## Source Data Model
 # MAGIC
@@ -50,7 +50,7 @@
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC CREATE SCHEMA IF NOT EXISTS raw;
+# MAGIC CREATE SCHEMA IF NOT EXISTS dream_airlines_dw;
 # MAGIC CREATE SCHEMA IF NOT EXISTS analytics;
 
 # COMMAND ----------
@@ -60,7 +60,14 @@
 
 # COMMAND ----------
 
-DATA_PATH = "/path/to/pyspark_etl_boilerplate/data/dreamAirlines_DW"  # adjust to your repo path
+from pathlib import Path
+
+# Resolve the project root from the notebook's own workspace path —
+# no manual configuration needed.
+_nb_path = dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath().get()
+cwd = Path(f"/Workspace{_nb_path}").parent.parent   # training/ → project root
+
+DATA_PATH = f"file:{cwd}/data/dreamAirlines_DW"     # file: scheme required for workspace paths in Spark
 
 TABLE_MAP = {
     "dim_customer":       "dimCustomer.csv",
