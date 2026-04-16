@@ -77,23 +77,30 @@ DreamAirlines operates a classic star schema data warehouse covering
 
 ## Target: what you will build
 
-```
-SOURCE (raw schema)                        TARGET (analytics schema)
-───────────────────────────────────────    ──────────────────────────────────────────
-dream_airlines_dw.dim_travel_booking ──┐                 analytics.booking_revenue_summary
-dream_airlines_dw.dim_customer        ├──► ETL job  ──►  ──────────────────────────────────────────
-dream_airlines_dw.dim_date            │                  booking_date       DATE
-dream_airlines_dw.fact_travel_booking ┤                  travel_agency      STRING
-dream_airlines_dw.fact_hotel_booking  ┤                  destination        STRING
-dream_airlines_dw.fact_car_renting    ┤                  travel_class       STRING
-dream_airlines_dw.fact_insurance      ┘                  customer_type      STRING
-                                           num_bookings       LONG
-                                           travel_revenue     DOUBLE
-                                           hotel_revenue      DOUBLE
-                                           car_revenue        DOUBLE
-                                           insurance_revenue  DOUBLE
-                                           total_revenue      DOUBLE
-                                           revenue_tier       STRING  (High/Medium/Low)
+```mermaid
+flowchart LR
+    subgraph SRC["dream_airlines_dw"]
+        direction TB
+        dtb("dim_travel_booking")
+        dc("dim_customer")
+        dd("dim_date")
+        ftb("fact_travel_booking")
+        fhb("fact_hotel_booking")
+        fcr("fact_car_renting")
+        fi("fact_insurance")
+    end
+
+    ETL(["BookingRevenueJob\nextract → transform → load"])
+
+    subgraph TGT["analytics"]
+        brs["booking_revenue_summary\n─────────────────────────\nbooking_date · DATE\ntravel_agency · STRING\ndestination · STRING\ntravel_class · STRING\ncustomer_type · STRING\nnum_bookings · LONG\ntravel_revenue · DOUBLE\nhotel_revenue · DOUBLE\ncar_revenue · DOUBLE\ninsurance_revenue · DOUBLE\ntotal_revenue · DOUBLE\nrevenue_tier · STRING  ➜ High / Medium / Low"]
+    end
+
+    SRC --> ETL --> TGT
+
+    style ETL fill:#6D28D9,color:#fff,stroke:#3B0764
+    style TGT fill:#EDE9FE,stroke:#6D28D9
+    style SRC fill:#F3F4F6,stroke:#9CA3AF
 ```
 
 ---
@@ -155,19 +162,6 @@ config/dev/training_notebook.properties
 
 A copy of `example.properties` with `spark.app.name=training_notebook`.
 Adjust `DATA_PATH` in `00_setup_data` to point to your local clone of the repo.
-
----
-
-## Scala archive — `scala/`
-
-The `scala/` folder holds the original Databricks exercises from the 2019
-DreamAirlines training session. They are kept here as a reference and a
-reminder of how far the tooling has come since then.
-
-| File | Description |
-|---|---|
-| `exo_cert_siwar.scala` | Original certification exercise |
-| `Exo_certif.scala` | Shared exercise from the training |
 
 ---
 
