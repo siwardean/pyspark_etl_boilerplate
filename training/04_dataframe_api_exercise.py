@@ -10,7 +10,7 @@
 # MAGIC
 # MAGIC ## Data Model
 # MAGIC
-# MAGIC ### Source — Raw Layer (`raw` schema)
+# MAGIC ### Source — Raw Layer (`dream_airlines_dw` schema)
 # MAGIC
 # MAGIC ```
 # MAGIC dream_airlines_dw.dim_travel_booking                    dream_airlines_dw.dim_customer
