@@ -89,9 +89,9 @@ for table_name, csv_file in TABLE_MAP.items():
     (df.write
        .format("delta")
        .mode("overwrite")
-       .saveAsTable(f"raw.{table_name}"))
+       .saveAsTable(f"dream_airlines_dw.{table_name}"))
 
-    print(f"raw.{table_name:<25} → {df.count():>4} rows")
+    print(f"dream_airlines_dw.{table_name:<25} → {df.count():>4} rows")
 
 # COMMAND ----------
 
@@ -102,18 +102,18 @@ for table_name, csv_file in TABLE_MAP.items():
 
 # MAGIC %sql
 # MAGIC SELECT table_name, num_rows FROM (
-# MAGIC     SELECT 'dim_customer'       AS table_name, COUNT(*) AS num_rows FROM raw.dim_customer       UNION ALL
-# MAGIC     SELECT 'dim_employee',                     COUNT(*)             FROM raw.dim_employee       UNION ALL
-# MAGIC     SELECT 'dim_travel_agency',                COUNT(*)             FROM raw.dim_travel_agency  UNION ALL
-# MAGIC     SELECT 'dim_travel_booking',               COUNT(*)             FROM raw.dim_travel_booking UNION ALL
-# MAGIC     SELECT 'dim_hotel_booking',                COUNT(*)             FROM raw.dim_hotel_booking  UNION ALL
-# MAGIC     SELECT 'dim_car_renting',                  COUNT(*)             FROM raw.dim_car_renting    UNION ALL
-# MAGIC     SELECT 'dim_hotel',                        COUNT(*)             FROM raw.dim_hotel          UNION ALL
-# MAGIC     SELECT 'dim_car',                          COUNT(*)             FROM raw.dim_car            UNION ALL
-# MAGIC     SELECT 'dim_insurance',                    COUNT(*)             FROM raw.dim_insurance      UNION ALL
-# MAGIC     SELECT 'dim_date',                         COUNT(*)             FROM raw.dim_date           UNION ALL
-# MAGIC     SELECT 'fact_travel_booking',              COUNT(*)             FROM raw.fact_travel_booking UNION ALL
-# MAGIC     SELECT 'fact_hotel_booking',               COUNT(*)             FROM raw.fact_hotel_booking  UNION ALL
-# MAGIC     SELECT 'fact_car_renting',                 COUNT(*)             FROM raw.fact_car_renting    UNION ALL
-# MAGIC     SELECT 'fact_insurance',                   COUNT(*)             FROM raw.fact_insurance
+# MAGIC     SELECT 'dim_customer'       AS table_name, COUNT(*) AS num_rows FROM dream_airlines_dw.dim_customer       UNION ALL
+# MAGIC     SELECT 'dim_employee',                     COUNT(*)             FROM dream_airlines_dw.dim_employee       UNION ALL
+# MAGIC     SELECT 'dim_travel_agency',                COUNT(*)             FROM dream_airlines_dw.dim_travel_agency  UNION ALL
+# MAGIC     SELECT 'dim_travel_booking',               COUNT(*)             FROM dream_airlines_dw.dim_travel_booking UNION ALL
+# MAGIC     SELECT 'dim_hotel_booking',                COUNT(*)             FROM dream_airlines_dw.dim_hotel_booking  UNION ALL
+# MAGIC     SELECT 'dim_car_renting',                  COUNT(*)             FROM dream_airlines_dw.dim_car_renting    UNION ALL
+# MAGIC     SELECT 'dim_hotel',                        COUNT(*)             FROM dream_airlines_dw.dim_hotel          UNION ALL
+# MAGIC     SELECT 'dim_car',                          COUNT(*)             FROM dream_airlines_dw.dim_car            UNION ALL
+# MAGIC     SELECT 'dim_insurance',                    COUNT(*)             FROM dream_airlines_dw.dim_insurance      UNION ALL
+# MAGIC     SELECT 'dim_date',                         COUNT(*)             FROM dream_airlines_dw.dim_date           UNION ALL
+# MAGIC     SELECT 'fact_travel_booking',              COUNT(*)             FROM dream_airlines_dw.fact_travel_booking UNION ALL
+# MAGIC     SELECT 'fact_hotel_booking',               COUNT(*)             FROM dream_airlines_dw.fact_hotel_booking  UNION ALL
+# MAGIC     SELECT 'fact_car_renting',                 COUNT(*)             FROM dream_airlines_dw.fact_car_renting    UNION ALL
+# MAGIC     SELECT 'fact_insurance',                   COUNT(*)             FROM dream_airlines_dw.fact_insurance
 # MAGIC ) ORDER BY table_name;

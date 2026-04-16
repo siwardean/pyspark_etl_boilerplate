@@ -53,25 +53,25 @@ DreamAirlines operates a classic star schema data warehouse covering
 
 | Table | Rows | What it describes |
 |---|---|---|
-| `raw.dim_travel_booking` | 99 | Core booking — origin, destination, class, dates |
-| `raw.dim_customer` | 99 | Customer master — name, type, nationality |
-| `raw.dim_employee` | 15 | Staff across the three agencies |
-| `raw.dim_travel_agency` | 3 | Lisbon, Porto, Faro offices |
-| `raw.dim_hotel` | 21 | Hotel properties by country |
-| `raw.dim_car` | 25 | Vehicle inventory by rental company |
-| `raw.dim_insurance` | 6 | Insurance products (Standard / Plus / Full / Basic) |
-| `raw.dim_hotel_booking` | 83 | Hotel booking details |
-| `raw.dim_car_renting` | 88 | Car rental details |
-| `raw.dim_date` | 10 958 | Full calendar dimension 2000–2029 |
+| `dream_airlines_dw.dim_travel_booking` | 99 | Core booking — origin, destination, class, dates |
+| `dream_airlines_dw.dim_customer` | 99 | Customer master — name, type, nationality |
+| `dream_airlines_dw.dim_employee` | 15 | Staff across the three agencies |
+| `dream_airlines_dw.dim_travel_agency` | 3 | Lisbon, Porto, Faro offices |
+| `dream_airlines_dw.dim_hotel` | 21 | Hotel properties by country |
+| `dream_airlines_dw.dim_car` | 25 | Vehicle inventory by rental company |
+| `dream_airlines_dw.dim_insurance` | 6 | Insurance products (Standard / Plus / Full / Basic) |
+| `dream_airlines_dw.dim_hotel_booking` | 83 | Hotel booking details |
+| `dream_airlines_dw.dim_car_renting` | 88 | Car rental details |
+| `dream_airlines_dw.dim_date` | 10 958 | Full calendar dimension 2000–2029 |
 
 ### Facts
 
 | Table | Rows | Revenue column |
 |---|---|---|
-| `raw.fact_travel_booking` | 99 | `AMT_Travel` |
-| `raw.fact_hotel_booking` | 83 | `AMT_Accomodation` |
-| `raw.fact_car_renting` | 88 | `AMT_Rental`, `AMT_DailyRate` |
-| `raw.fact_insurance` | 155 | `AMT_Travel_Insurance`, `AMT_Car_Insurance` |
+| `dream_airlines_dw.fact_travel_booking` | 99 | `AMT_Travel` |
+| `dream_airlines_dw.fact_hotel_booking` | 83 | `AMT_Accomodation` |
+| `dream_airlines_dw.fact_car_renting` | 88 | `AMT_Rental`, `AMT_DailyRate` |
+| `dream_airlines_dw.fact_insurance` | 155 | `AMT_Travel_Insurance`, `AMT_Car_Insurance` |
 
 ---
 
@@ -80,13 +80,13 @@ DreamAirlines operates a classic star schema data warehouse covering
 ```
 SOURCE (raw schema)                        TARGET (analytics schema)
 ───────────────────────────────────────    ──────────────────────────────────────────
-raw.dim_travel_booking ──┐                 analytics.booking_revenue_summary
-raw.dim_customer        ├──► ETL job  ──►  ──────────────────────────────────────────
-raw.dim_date            │                  booking_date       DATE
-raw.fact_travel_booking ┤                  travel_agency      STRING
-raw.fact_hotel_booking  ┤                  destination        STRING
-raw.fact_car_renting    ┤                  travel_class       STRING
-raw.fact_insurance      ┘                  customer_type      STRING
+dream_airlines_dw.dim_travel_booking ──┐                 analytics.booking_revenue_summary
+dream_airlines_dw.dim_customer        ├──► ETL job  ──►  ──────────────────────────────────────────
+dream_airlines_dw.dim_date            │                  booking_date       DATE
+dream_airlines_dw.fact_travel_booking ┤                  travel_agency      STRING
+dream_airlines_dw.fact_hotel_booking  ┤                  destination        STRING
+dream_airlines_dw.fact_car_renting    ┤                  travel_class       STRING
+dream_airlines_dw.fact_insurance      ┘                  customer_type      STRING
                                            num_bookings       LONG
                                            travel_revenue     DOUBLE
                                            hotel_revenue      DOUBLE
@@ -102,7 +102,7 @@ raw.fact_insurance      ┘                  customer_type      STRING
 
 | # | Notebook | What you do | Share? |
 |---|---|---|---|
-| `00` | `00_setup_data` | Load all 14 CSV files into `raw.*` Delta tables | Yes |
+| `00` | `00_setup_data` | Load all 14 CSV files into `dream_airlines_dw.*` Delta tables | Yes |
 | `01` | `01_data_exploration` | Profile the data — nulls, integrity, distributions | Yes |
 | `02` | `02_etl_exercise` | Build the analytics table — 4 TODOs to complete | Yes |
 | `03` | `03_etl_solution` | Full solution with design notes | Instructor only |

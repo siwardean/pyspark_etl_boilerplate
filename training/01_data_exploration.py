@@ -29,20 +29,20 @@
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC DESCRIBE raw.dim_travel_booking;
+# MAGIC DESCRIBE dream_airlines_dw.dim_travel_booking;
 
 # COMMAND ----------
 
-display(spark.table("raw.dim_travel_booking").limit(5))
+display(spark.table("dream_airlines_dw.dim_travel_booking").limit(5))
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC DESCRIBE raw.fact_travel_booking;
+# MAGIC DESCRIBE dream_airlines_dw.fact_travel_booking;
 
 # COMMAND ----------
 
-display(spark.table("raw.fact_travel_booking").limit(5))
+display(spark.table("dream_airlines_dw.fact_travel_booking").limit(5))
 
 # COMMAND ----------
 
@@ -59,22 +59,22 @@ display(spark.table("raw.fact_travel_booking").limit(5))
 # MAGIC     ROUND(MAX(AMT_Travel), 2)  AS max_amt,
 # MAGIC     ROUND(AVG(AMT_Travel), 2)  AS avg_amt,
 # MAGIC     ROUND(SUM(AMT_Travel), 2)  AS total_amt
-# MAGIC FROM raw.fact_travel_booking
+# MAGIC FROM dream_airlines_dw.fact_travel_booking
 # MAGIC UNION ALL
 # MAGIC SELECT 'fact_hotel_booking', COUNT(*),
 # MAGIC        ROUND(MIN(AMT_Accomodation), 2), ROUND(MAX(AMT_Accomodation), 2),
 # MAGIC        ROUND(AVG(AMT_Accomodation), 2), ROUND(SUM(AMT_Accomodation), 2)
-# MAGIC FROM raw.fact_hotel_booking
+# MAGIC FROM dream_airlines_dw.fact_hotel_booking
 # MAGIC UNION ALL
 # MAGIC SELECT 'fact_car_renting', COUNT(*),
 # MAGIC        ROUND(MIN(AMT_Rental), 2), ROUND(MAX(AMT_Rental), 2),
 # MAGIC        ROUND(AVG(AMT_Rental), 2), ROUND(SUM(AMT_Rental), 2)
-# MAGIC FROM raw.fact_car_renting
+# MAGIC FROM dream_airlines_dw.fact_car_renting
 # MAGIC UNION ALL
 # MAGIC SELECT 'fact_insurance', COUNT(*),
 # MAGIC        ROUND(MIN(AMT_Travel_Insurance), 2), ROUND(MAX(AMT_Travel_Insurance), 2),
 # MAGIC        ROUND(AVG(AMT_Travel_Insurance), 2), ROUND(SUM(AMT_Travel_Insurance + AMT_Car_Insurance), 2)
-# MAGIC FROM raw.fact_insurance;
+# MAGIC FROM dream_airlines_dw.fact_insurance;
 
 # COMMAND ----------
 
@@ -109,7 +109,7 @@ def null_report(table_name):
 
 # COMMAND ----------
 
-display(null_report("raw.dim_travel_booking"))
+display(null_report("dream_airlines_dw.dim_travel_booking"))
 
 # COMMAND ----------
 
@@ -117,7 +117,7 @@ display(null_report("raw.dim_travel_booking"))
 
 # COMMAND ----------
 
-display(null_report("raw.fact_car_renting"))
+display(null_report("dream_airlines_dw.fact_car_renting"))
 
 # COMMAND ----------
 
@@ -137,22 +137,22 @@ display(null_report("raw.fact_car_renting"))
 # MAGIC -- fact_travel_booking → dim_travel_booking
 # MAGIC SELECT 'fact_travel_booking → dim_travel_booking' AS check_name,
 # MAGIC        COUNT(*) AS orphan_rows
-# MAGIC FROM raw.fact_travel_booking f
-# MAGIC LEFT JOIN raw.dim_travel_booking d ON f.PK_TravelBooking = d.PK_TravelBooking
+# MAGIC FROM dream_airlines_dw.fact_travel_booking f
+# MAGIC LEFT JOIN dream_airlines_dw.dim_travel_booking d ON f.PK_TravelBooking = d.PK_TravelBooking
 # MAGIC WHERE d.PK_TravelBooking IS NULL
 # MAGIC UNION ALL
 # MAGIC -- fact_hotel_booking → dim_travel_booking
 # MAGIC SELECT 'fact_hotel_booking → dim_travel_booking',
 # MAGIC        COUNT(*)
-# MAGIC FROM raw.fact_hotel_booking f
-# MAGIC LEFT JOIN raw.dim_travel_booking d ON f.FK_TravelBooking = d.PK_TravelBooking
+# MAGIC FROM dream_airlines_dw.fact_hotel_booking f
+# MAGIC LEFT JOIN dream_airlines_dw.dim_travel_booking d ON f.FK_TravelBooking = d.PK_TravelBooking
 # MAGIC WHERE d.PK_TravelBooking IS NULL
 # MAGIC UNION ALL
 # MAGIC -- fact_insurance → dim_travel_booking
 # MAGIC SELECT 'fact_insurance → dim_travel_booking',
 # MAGIC        COUNT(*)
-# MAGIC FROM raw.fact_insurance f
-# MAGIC LEFT JOIN raw.dim_travel_booking d ON f.FK_TravelBooking = d.PK_TravelBooking
+# MAGIC FROM dream_airlines_dw.fact_insurance f
+# MAGIC LEFT JOIN dream_airlines_dw.dim_travel_booking d ON f.FK_TravelBooking = d.PK_TravelBooking
 # MAGIC WHERE d.PK_TravelBooking IS NULL;
 
 # COMMAND ----------
@@ -167,15 +167,15 @@ display(null_report("raw.fact_car_renting"))
 # MAGIC        COUNT(*)             AS total_rows,
 # MAGIC        COUNT(DISTINCT PK_TravelBooking) AS unique_pk,
 # MAGIC        COUNT(*) - COUNT(DISTINCT PK_TravelBooking) AS duplicates
-# MAGIC FROM raw.dim_travel_booking
+# MAGIC FROM dream_airlines_dw.dim_travel_booking
 # MAGIC UNION ALL
 # MAGIC SELECT 'dim_customer', COUNT(*), COUNT(DISTINCT PK_Customer),
 # MAGIC        COUNT(*) - COUNT(DISTINCT PK_Customer)
-# MAGIC FROM raw.dim_customer
+# MAGIC FROM dream_airlines_dw.dim_customer
 # MAGIC UNION ALL
 # MAGIC SELECT 'dim_car', COUNT(*), COUNT(DISTINCT PK_Car),
 # MAGIC        COUNT(*) - COUNT(DISTINCT PK_Car)
-# MAGIC FROM raw.dim_car;
+# MAGIC FROM dream_airlines_dw.dim_car;
 
 # COMMAND ----------
 
@@ -194,8 +194,8 @@ display(null_report("raw.fact_car_renting"))
 # MAGIC     d.DSC_TravelAgency                       AS agency,
 # MAGIC     COUNT(DISTINCT f.PK_TravelBooking)       AS bookings,
 # MAGIC     ROUND(SUM(f.AMT_Travel), 2)              AS travel_revenue
-# MAGIC FROM raw.fact_travel_booking f
-# MAGIC JOIN raw.dim_travel_booking d ON f.PK_TravelBooking = d.PK_TravelBooking
+# MAGIC FROM dream_airlines_dw.fact_travel_booking f
+# MAGIC JOIN dream_airlines_dw.dim_travel_booking d ON f.PK_TravelBooking = d.PK_TravelBooking
 # MAGIC GROUP BY d.DSC_TravelAgency
 # MAGIC ORDER BY travel_revenue DESC;
 
@@ -211,7 +211,7 @@ display(null_report("raw.fact_car_renting"))
 # MAGIC     DSC_DestinyCountry   AS destination,
 # MAGIC     COUNT(*)             AS bookings,
 # MAGIC     ROUND(AVG(Travel_EndDate - Travel_StartDate), 1) AS avg_stay_days
-# MAGIC FROM raw.dim_travel_booking
+# MAGIC FROM dream_airlines_dw.dim_travel_booking
 # MAGIC GROUP BY DSC_DestinyCountry
 # MAGIC ORDER BY bookings DESC
 # MAGIC LIMIT 10;
@@ -229,8 +229,8 @@ display(null_report("raw.fact_car_renting"))
 # MAGIC     d.QuarterName,
 # MAGIC     COUNT(DISTINCT f.PK_TravelBooking) AS bookings,
 # MAGIC     ROUND(SUM(f.AMT_Travel), 2)        AS travel_revenue
-# MAGIC FROM raw.fact_travel_booking f
-# MAGIC JOIN raw.dim_date d ON f.FK_date = d.PK_Date
+# MAGIC FROM dream_airlines_dw.fact_travel_booking f
+# MAGIC JOIN dream_airlines_dw.dim_date d ON f.FK_date = d.PK_Date
 # MAGIC GROUP BY d.Year, d.Quarter, d.QuarterName
 # MAGIC ORDER BY d.Year, d.Quarter;
 
@@ -246,8 +246,8 @@ display(null_report("raw.fact_car_renting"))
 # MAGIC     DSC_TravelClass,
 # MAGIC     COUNT(*)                               AS bookings,
 # MAGIC     ROUND(AVG(f.AMT_Travel), 2)            AS avg_travel_amt
-# MAGIC FROM raw.dim_travel_booking dtb
-# MAGIC JOIN raw.fact_travel_booking f ON f.PK_TravelBooking = dtb.PK_TravelBooking
+# MAGIC FROM dream_airlines_dw.dim_travel_booking dtb
+# MAGIC JOIN dream_airlines_dw.fact_travel_booking f ON f.PK_TravelBooking = dtb.PK_TravelBooking
 # MAGIC GROUP BY DSC_TravelClass
 # MAGIC ORDER BY bookings DESC;
 
@@ -264,9 +264,9 @@ display(null_report("raw.fact_car_renting"))
 # MAGIC     COUNT(DISTINCT f.PK_TravelBooking)     AS bookings,
 # MAGIC     ROUND(SUM(f.AMT_Travel), 2)            AS travel_revenue,
 # MAGIC     ROUND(AVG(f.AMT_Travel), 2)            AS avg_booking_value
-# MAGIC FROM raw.fact_travel_booking f
-# MAGIC JOIN raw.dim_travel_booking  dtb ON f.PK_TravelBooking   = dtb.PK_TravelBooking
-# MAGIC JOIN raw.dim_customer        c   ON dtb.DSC_Customer      = c.DSC_Customer
+# MAGIC FROM dream_airlines_dw.fact_travel_booking f
+# MAGIC JOIN dream_airlines_dw.dim_travel_booking  dtb ON f.PK_TravelBooking   = dtb.PK_TravelBooking
+# MAGIC JOIN dream_airlines_dw.dim_customer        c   ON dtb.DSC_Customer      = c.DSC_Customer
 # MAGIC GROUP BY c.DSC_CustomerType
 # MAGIC ORDER BY travel_revenue DESC;
 

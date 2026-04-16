@@ -337,7 +337,7 @@ def slide3_assignment(prs):
 
     steps = [
         ("00", "Setup — load the data",
-         "14 CSV files → raw.* Delta tables.  One command, done."),
+         "14 CSV files → dream_airlines_dw.* Delta tables.  One command, done."),
         ("01", "Explore — profile the data",
          "Find nulls, broken FK, integer dates, audit noise.  Document every finding."),
         ("02", "Build — complete the ETL job",

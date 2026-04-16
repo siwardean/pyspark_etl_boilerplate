@@ -13,7 +13,7 @@
 # MAGIC ### Source — Raw Layer (`raw` schema)
 # MAGIC
 # MAGIC ```
-# MAGIC raw.dim_travel_booking                    raw.dim_customer
+# MAGIC dream_airlines_dw.dim_travel_booking                    dream_airlines_dw.dim_customer
 # MAGIC ──────────────────────────────────────    ─────────────────────────────
 # MAGIC PK_TravelBooking  INT     PK              PK_Customer    INT     PK
 # MAGIC DSC_TravelAgency  STRING  → dim_travel_agency  DSC_Customer  STRING  (join key)
@@ -27,7 +27,7 @@
 # MAGIC Travel_StartDate  INT     YYYYMMDD
 # MAGIC Travel_EndDate    INT     YYYYMMDD
 # MAGIC
-# MAGIC raw.dim_date                              raw.dim_travel_agency
+# MAGIC dream_airlines_dw.dim_date                              dream_airlines_dw.dim_travel_agency
 # MAGIC ──────────────────────────────────────    ─────────────────────────────
 # MAGIC PK_Date   INT  PK  (YYYYMMDD)             PK_TravelAgency  INT    PK
 # MAGIC Date      DATE                            DSC_TravelAgency STRING
@@ -36,7 +36,7 @@
 # MAGIC Quarter   INT
 # MAGIC IsWeekend BOOLEAN
 # MAGIC
-# MAGIC raw.fact_travel_booking    raw.fact_hotel_booking     raw.fact_car_renting       raw.fact_insurance
+# MAGIC dream_airlines_dw.fact_travel_booking    dream_airlines_dw.fact_hotel_booking     dream_airlines_dw.fact_car_renting       dream_airlines_dw.fact_insurance
 # MAGIC ─────────────────────────  ─────────────────────────  ─────────────────────────  ─────────────────────────
 # MAGIC PK_TravelBooking INT  PK   PK_HotelBooking  INT  PK   PK_CarRenting    INT  PK   PK_Insurance  INT  PK
 # MAGIC FK_date          INT  FK   FK_TravelBooking INT  FK   FK_TravelBooking INT  FK   FK_TravelBooking INT FK
@@ -139,13 +139,13 @@ class DailyBookingRevenueJobV1(ETLInterface):
     """Daily ETL — total booking revenue by agency/destination/class. SQL version."""
 
     def extract(self):
-        self.dim_travel_booking = spark.table("raw.dim_travel_booking")
-        self.dim_customer       = spark.table("raw.dim_customer")
-        self.dim_date           = spark.table("raw.dim_date")
-        self.fact_travel        = spark.table("raw.fact_travel_booking")
-        self.fact_hotel         = spark.table("raw.fact_hotel_booking")
-        self.fact_car           = spark.table("raw.fact_car_renting")
-        self.fact_insurance     = spark.table("raw.fact_insurance")
+        self.dim_travel_booking = spark.table("dream_airlines_dw.dim_travel_booking")
+        self.dim_customer       = spark.table("dream_airlines_dw.dim_customer")
+        self.dim_date           = spark.table("dream_airlines_dw.dim_date")
+        self.fact_travel        = spark.table("dream_airlines_dw.fact_travel_booking")
+        self.fact_hotel         = spark.table("dream_airlines_dw.fact_hotel_booking")
+        self.fact_car           = spark.table("dream_airlines_dw.fact_car_renting")
+        self.fact_insurance     = spark.table("dream_airlines_dw.fact_insurance")
 
         for name, df in [
             ("dim_travel_booking", self.dim_travel_booking),
@@ -267,13 +267,13 @@ class DailyBookingRevenueJobV2(ETLInterface):
 
     # ── extract — do not modify ───────────────────────────────────────────────
     def extract(self):
-        self.dim_travel_booking = spark.table("raw.dim_travel_booking")
-        self.dim_customer       = spark.table("raw.dim_customer")
-        self.dim_date           = spark.table("raw.dim_date")
-        self.fact_travel        = spark.table("raw.fact_travel_booking")
-        self.fact_hotel         = spark.table("raw.fact_hotel_booking")
-        self.fact_car           = spark.table("raw.fact_car_renting")
-        self.fact_insurance     = spark.table("raw.fact_insurance")
+        self.dim_travel_booking = spark.table("dream_airlines_dw.dim_travel_booking")
+        self.dim_customer       = spark.table("dream_airlines_dw.dim_customer")
+        self.dim_date           = spark.table("dream_airlines_dw.dim_date")
+        self.fact_travel        = spark.table("dream_airlines_dw.fact_travel_booking")
+        self.fact_hotel         = spark.table("dream_airlines_dw.fact_hotel_booking")
+        self.fact_car           = spark.table("dream_airlines_dw.fact_car_renting")
+        self.fact_insurance     = spark.table("dream_airlines_dw.fact_insurance")
 
     # ── transform ─────────────────────────────────────────────────────────────
     def transform(self, run_date: str):

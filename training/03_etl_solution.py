@@ -18,13 +18,13 @@ from pyspark.sql import functions as F
 
 # COMMAND ----------
 
-dim_travel_booking = spark.table("raw.dim_travel_booking")
-dim_customer       = spark.table("raw.dim_customer")
-dim_date           = spark.table("raw.dim_date")
-fact_travel        = spark.table("raw.fact_travel_booking")
-fact_hotel         = spark.table("raw.fact_hotel_booking")
-fact_car           = spark.table("raw.fact_car_renting")
-fact_insurance     = spark.table("raw.fact_insurance")
+dim_travel_booking = spark.table("dream_airlines_dw.dim_travel_booking")
+dim_customer       = spark.table("dream_airlines_dw.dim_customer")
+dim_date           = spark.table("dream_airlines_dw.dim_date")
+fact_travel        = spark.table("dream_airlines_dw.fact_travel_booking")
+fact_hotel         = spark.table("dream_airlines_dw.fact_hotel_booking")
+fact_car           = spark.table("dream_airlines_dw.fact_car_renting")
+fact_insurance     = spark.table("dream_airlines_dw.fact_insurance")
 
 # COMMAND ----------
 

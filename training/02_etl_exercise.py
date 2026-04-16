@@ -17,14 +17,14 @@
 # MAGIC SOURCE (raw schema)                       TARGET (analytics schema)
 # MAGIC ──────────────────────────────────────    ──────────────────────────────────────────
 # MAGIC                                           analytics.booking_revenue_summary
-# MAGIC raw.dim_travel_booking ──┐                ──────────────────────────────────────────
-# MAGIC raw.dim_customer        ├──► transform    booking_date       DATE
-# MAGIC raw.dim_travel_agency   │                 travel_agency      STRING
-# MAGIC raw.dim_date            │                 destination        STRING
-# MAGIC raw.fact_travel_booking ┤                 travel_class       STRING
-# MAGIC raw.fact_hotel_booking  ┤                 customer_type      STRING
-# MAGIC raw.fact_car_renting    ┤                 num_bookings       LONG
-# MAGIC raw.fact_insurance      ┘                 travel_revenue     DOUBLE
+# MAGIC dream_airlines_dw.dim_travel_booking ──┐                ──────────────────────────────────────────
+# MAGIC dream_airlines_dw.dim_customer        ├──► transform    booking_date       DATE
+# MAGIC dream_airlines_dw.dim_travel_agency   │                 travel_agency      STRING
+# MAGIC dream_airlines_dw.dim_date            │                 destination        STRING
+# MAGIC dream_airlines_dw.fact_travel_booking ┤                 travel_class       STRING
+# MAGIC dream_airlines_dw.fact_hotel_booking  ┤                 customer_type      STRING
+# MAGIC dream_airlines_dw.fact_car_renting    ┤                 num_bookings       LONG
+# MAGIC dream_airlines_dw.fact_insurance      ┘                 travel_revenue     DOUBLE
 # MAGIC                                           hotel_revenue      DOUBLE
 # MAGIC                                           car_revenue        DOUBLE
 # MAGIC                                           insurance_revenue  DOUBLE
@@ -58,13 +58,13 @@ from pyspark.sql.window import Window
 
 # COMMAND ----------
 
-dim_travel_booking = spark.table("raw.dim_travel_booking")
-dim_customer       = spark.table("raw.dim_customer")
-dim_date           = spark.table("raw.dim_date")
-fact_travel        = spark.table("raw.fact_travel_booking")
-fact_hotel         = spark.table("raw.fact_hotel_booking")
-fact_car           = spark.table("raw.fact_car_renting")
-fact_insurance     = spark.table("raw.fact_insurance")
+dim_travel_booking = spark.table("dream_airlines_dw.dim_travel_booking")
+dim_customer       = spark.table("dream_airlines_dw.dim_customer")
+dim_date           = spark.table("dream_airlines_dw.dim_date")
+fact_travel        = spark.table("dream_airlines_dw.fact_travel_booking")
+fact_hotel         = spark.table("dream_airlines_dw.fact_hotel_booking")
+fact_car           = spark.table("dream_airlines_dw.fact_car_renting")
+fact_insurance     = spark.table("dream_airlines_dw.fact_insurance")
 
 # COMMAND ----------
 
