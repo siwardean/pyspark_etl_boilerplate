@@ -13,24 +13,45 @@
 # MAGIC
 # MAGIC ## Source → Target Data Model
 # MAGIC
-# MAGIC ```
-# MAGIC SOURCE (raw schema)                       TARGET (analytics schema)
-# MAGIC ──────────────────────────────────────    ──────────────────────────────────────────
-# MAGIC                                           analytics.booking_revenue_summary
-# MAGIC dream_airlines_dw.dim_travel_booking ──┐                ──────────────────────────────────────────
-# MAGIC dream_airlines_dw.dim_customer        ├──► transform    booking_date       DATE
-# MAGIC dream_airlines_dw.dim_travel_agency   │                 travel_agency      STRING
-# MAGIC dream_airlines_dw.dim_date            │                 destination        STRING
-# MAGIC dream_airlines_dw.fact_travel_booking ┤                 travel_class       STRING
-# MAGIC dream_airlines_dw.fact_hotel_booking  ┤                 customer_type      STRING
-# MAGIC dream_airlines_dw.fact_car_renting    ┤                 num_bookings       LONG
-# MAGIC dream_airlines_dw.fact_insurance      ┘                 travel_revenue     DOUBLE
-# MAGIC                                           hotel_revenue      DOUBLE
-# MAGIC                                           car_revenue        DOUBLE
-# MAGIC                                           insurance_revenue  DOUBLE
-# MAGIC                                           total_revenue      DOUBLE
-# MAGIC                                           revenue_tier       STRING
-# MAGIC ```
+# MAGIC <table style="border-collapse:collapse; font-family:monospace; font-size:13px; width:100%;">
+# MAGIC <tr>
+# MAGIC   <td style="vertical-align:top; padding:16px 24px; background:#1e1e2e; border-radius:8px 0 0 8px; border:1px solid #3B0764;">
+# MAGIC     <div style="color:#8B5CF6; font-weight:700; letter-spacing:1px; margin-bottom:12px; font-size:11px;">SOURCE — dream_airlines_dw</div>
+# MAGIC     <div style="color:#E9D5FF; line-height:2;">
+# MAGIC       dim_travel_booking<br/>
+# MAGIC       dim_customer<br/>
+# MAGIC       dim_travel_agency<br/>
+# MAGIC       dim_date<br/>
+# MAGIC       <span style="color:#6B7280;">─────────────────</span><br/>
+# MAGIC       fact_travel_booking<br/>
+# MAGIC       fact_hotel_booking<br/>
+# MAGIC       fact_car_renting<br/>
+# MAGIC       fact_insurance
+# MAGIC     </div>
+# MAGIC   </td>
+# MAGIC   <td style="vertical-align:middle; text-align:center; padding:0 20px; color:#6D28D9; font-size:24px;">
+# MAGIC     ──► <br/><span style="font-size:11px; color:#6B7280; font-family:sans-serif;">transform</span>
+# MAGIC   </td>
+# MAGIC   <td style="vertical-align:top; padding:16px 24px; background:#1e1e2e; border-radius:0 8px 8px 0; border:1px solid #3B0764;">
+# MAGIC     <div style="color:#8B5CF6; font-weight:700; letter-spacing:1px; margin-bottom:12px; font-size:11px;">TARGET — analytics</div>
+# MAGIC     <div style="color:#C4B5FD; font-weight:700; margin-bottom:8px;">booking_revenue_summary</div>
+# MAGIC     <table style="border-collapse:collapse; font-size:12px;">
+# MAGIC       <tr><td style="color:#E9D5FF; padding:1px 12px 1px 0;">booking_date</td><td style="color:#6B7280;">DATE</td></tr>
+# MAGIC       <tr><td style="color:#E9D5FF; padding:1px 12px 1px 0;">travel_agency</td><td style="color:#6B7280;">STRING</td></tr>
+# MAGIC       <tr><td style="color:#E9D5FF; padding:1px 12px 1px 0;">destination</td><td style="color:#6B7280;">STRING</td></tr>
+# MAGIC       <tr><td style="color:#E9D5FF; padding:1px 12px 1px 0;">travel_class</td><td style="color:#6B7280;">STRING</td></tr>
+# MAGIC       <tr><td style="color:#E9D5FF; padding:1px 12px 1px 0;">customer_type</td><td style="color:#6B7280;">STRING</td></tr>
+# MAGIC       <tr><td style="color:#E9D5FF; padding:1px 12px 1px 0;">num_bookings</td><td style="color:#6B7280;">LONG</td></tr>
+# MAGIC       <tr><td style="color:#E9D5FF; padding:1px 12px 1px 0;">travel_revenue</td><td style="color:#6B7280;">DOUBLE</td></tr>
+# MAGIC       <tr><td style="color:#E9D5FF; padding:1px 12px 1px 0;">hotel_revenue</td><td style="color:#6B7280;">DOUBLE</td></tr>
+# MAGIC       <tr><td style="color:#E9D5FF; padding:1px 12px 1px 0;">car_revenue</td><td style="color:#6B7280;">DOUBLE</td></tr>
+# MAGIC       <tr><td style="color:#E9D5FF; padding:1px 12px 1px 0;">insurance_revenue</td><td style="color:#6B7280;">DOUBLE</td></tr>
+# MAGIC       <tr><td style="color:#E9D5FF; padding:1px 12px 1px 0;">total_revenue</td><td style="color:#6B7280;">DOUBLE</td></tr>
+# MAGIC       <tr><td style="color:#E9D5FF; padding:1px 12px 1px 0;">revenue_tier</td><td style="color:#6B7280;">STRING &nbsp;<span style="color:#8B5CF6;">High / Medium / Low</span></td></tr>
+# MAGIC     </table>
+# MAGIC   </td>
+# MAGIC </tr>
+# MAGIC </table>
 # MAGIC
 # MAGIC ## Data contract (from notebook 01)
 # MAGIC
