@@ -1,5 +1,5 @@
-# Install once with:  pip install pre-commit && pre-commit install
-# Run on everything:  pre-commit run --all-files
+# Install once with:  uv run pre-commit install
+# Run on everything:  uv run pre-commit run --all-files
 # Skipped: sample data, the slide deck and the Databricks notebooks.
 exclude: ^data/|\.pptx$|^training/\d\d_.*\.py$|^training/scala/
 
@@ -25,3 +25,8 @@ repos:
       - id: ruff-check      # lint, with safe auto-fixes
         args: [--fix]
       - id: ruff-format     # formatting
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.13.9
+    hooks:
+      - id: uv-lock         # uv.lock must match pyproject.toml

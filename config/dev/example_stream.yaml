@@ -1,7 +1,7 @@
 # Streaming example, runnable locally from the repo root on either engine:
 #   python main.py --job jobs.examples.booking_stream_job.BookingSparkStreamJob --conf config/dev/example_stream.yaml
 #   python main.py --job jobs.examples.booking_stream_job.BookingFlinkStreamJob --conf config/dev/example_stream.yaml
-# (the Flink one needs: pip install -r requirements-flink.txt)
+# (the Flink one needs: uv sync --extra flink)
 
 job:
   env: dev

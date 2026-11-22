@@ -10,7 +10,7 @@ class FlinkSessionMixin:
 
     The environment runs in streaming or batch mode to match the job's mode.
     PyFlink is only imported when ``self.table_env`` is first used
-    (``pip install -r requirements-flink.txt``).
+    (``uv sync --extra flink``).
     """
 
     engine = "flink"

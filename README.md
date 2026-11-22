@@ -42,8 +42,8 @@ when there is one (notebooks, Databricks) and otherwise builds one from the
 ```
 pyspark_etl_boilerplate/
 ├── main.py                     # Entry point: runs any job by its dotted path
-├── requirements.txt            # Core dependencies
-├── requirements-flink.txt      # Only for jobs using FlinkSessionMixin
+├── pyproject.toml              # Version, dependencies, ruff and pytest settings
+├── uv.lock                     # Exact dependency versions (managed by uv)
 ├── config/
 │   ├── dev/                    # example.yaml, example_stream.yaml, training_*.yaml
 │   ├── test/                   # example.yaml
@@ -73,26 +73,26 @@ of `SparkSessionMixin + JobBatch`.
 ## Quick start
 
 ```bash
-pip install -r requirements.txt
+uv sync                     # creates .venv with the locked dependencies
 
 # Batch: CSV → cleaned Parquet
-python main.py --job jobs.examples.my_batch_job.MyBatchJob --conf config/dev/example.yaml
+uv run python main.py --job jobs.examples.my_batch_job.MyBatchJob --conf config/dev/example.yaml
 
 # Streaming on Spark: booking files → cleaned Parquet
-python main.py --job jobs.examples.booking_stream_job.BookingSparkStreamJob --conf config/dev/example_stream.yaml
+uv run python main.py --job jobs.examples.booking_stream_job.BookingSparkStreamJob --conf config/dev/example_stream.yaml
 
-# The same streaming job on Flink (pip install -r requirements-flink.txt)
-python main.py --job jobs.examples.booking_stream_job.BookingFlinkStreamJob --conf config/dev/example_stream.yaml
+# The same streaming job on Flink (uv sync --extra flink)
+uv run python main.py --job jobs.examples.booking_stream_job.BookingFlinkStreamJob --conf config/dev/example_stream.yaml
 
 # See the tracked runs
-mlflow ui
+uv run mlflow ui
 ```
 
 The dev examples read from `data/` and write to `output/`. Run
 parameters are passed with `--param`, repeatable:
 
 ```bash
-python main.py --job my_package.my_module.MyJob --conf config/dev/my_job.yaml --param run_date=2016-03-15
+uv run python main.py --job my_package.my_module.MyJob --conf config/dev/my_job.yaml --param run_date=2016-03-15
 ```
 
 ---
@@ -301,21 +301,39 @@ more; set `track_record_count = False` on a job where that is too expensive.
 
 ## Development
 
+Dependencies are managed with [uv](https://docs.astral.sh/uv/) and declared in
+`pyproject.toml`; `uv.lock` pins the exact versions.
+
 ```bash
-pip install -r requirements.txt pre-commit
-pre-commit install          # run the checks on every commit
-pre-commit run --all-files  # run them on everything now
-pytest tests/
+uv sync                            # core + dev dependencies, in .venv
+uv sync --extra flink              # also install PyFlink
+uv run pre-commit install          # run the checks on every commit
+uv run pre-commit run --all-files  # run them on everything now
+uv run pytest
+uv add <package>                   # add a dependency (updates pyproject.toml and uv.lock)
 ```
 
 The pre-commit hooks lint and format with [ruff](https://docs.astral.sh/ruff/)
-(configured in `pyproject.toml`) and run basic file checks (YAML and TOML
-syntax, trailing whitespace, merge-conflict markers, large files). The training
-notebooks, the sample data and the slide deck are skipped.
+(configured in `pyproject.toml`), run basic file checks (YAML and TOML syntax,
+trailing whitespace, merge-conflict markers, large files) and check that
+`uv.lock` matches `pyproject.toml`. The training notebooks, the sample data and
+the slide deck are skipped.
 
 The Spark tests need Java; the Flink tests are skipped unless PyFlink is
-installed (`pip install -r requirements-flink.txt`).
+installed.
 
-CI (`.github/workflows/ci.yml`) runs on every pull request and on pushes to
-`main`, in two stages: the pre-commit hooks, then the pytest suite including the
-Flink tests.
+### CI and releases
+
+Every pull request runs `.github/workflows/ci.yml`:
+
+1. **Pre-commit**: the hooks above.
+2. **Unit tests**: the pytest suite with Spark and Flink, once pre-commit passes.
+3. **Version**: fails if the `version` in `pyproject.toml` was already released.
+
+Every merge to `main` is a release. `.github/workflows/release.yml` tags the
+commit `v<version>` and publishes a GitHub release with generated notes. The
+version comes from `pyproject.toml`, so each pull request bumps it:
+
+```bash
+uv version --bump patch            # or minor / major; then commit pyproject.toml and uv.lock
+```
