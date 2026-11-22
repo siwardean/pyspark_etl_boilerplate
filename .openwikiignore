@@ -1,0 +1,7 @@
+# Paths OpenWiki must not read when it refreshes the wiki.
+data/
+output/
+mlruns/
+.venv/
+uv.lock
+*.pptx

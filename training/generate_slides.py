@@ -177,7 +177,7 @@ def slide1_title(prs):
 
     # subtitle
     add_textbox(slide, Inches(0.65), Inches(3.1), Inches(9), Inches(0.4),
-                "Your first real pipeline.  Four notebooks.  One mission.", 14,
+                "Batch, streaming and MLflow.  Three exercises.  One mission.", 14,
                 italic=True, color=GRAY, font_name="Calibri")
 
     # mission box background
@@ -207,7 +207,7 @@ def slide1_title(prs):
     # footer
     add_rect(slide, 0, H - Inches(0.45), W, Inches(0.45), PURPLE_DARK)
     add_textbox(slide, Inches(0.65), H - Inches(0.38), Inches(10), Inches(0.3),
-                "Databricks   ·   PySpark   ·   Delta Lake   ·   MLflow",
+                "Databricks   ·   PySpark   ·   Structured Streaming   ·   Delta Lake   ·   MLflow",
                 10, color=PURPLE_LIGHT, font_name="Calibri")
 
 
@@ -325,7 +325,7 @@ def slide2_structure(prs):
 def slide3_assignment(prs):
     slide = blank_slide(prs)
     add_rect(slide, 0, 0, W, H, WHITE)
-    slide_header(slide, "The Assignment", "Four notebooks — one pipeline")
+    slide_header(slide, "The Assignment", "Three exercises — batch, streaming, MLflow")
 
     top = Inches(0.95)
     lx  = Inches(0.4)
@@ -337,13 +337,13 @@ def slide3_assignment(prs):
 
     steps = [
         ("00", "Setup — load the data",
-         "14 CSV files → dream_airlines_dw.* Delta tables.  One command, done."),
-        ("01", "Explore — profile the data",
-         "Find nulls, broken FK, integer dates, audit noise.  Document every finding."),
-        ("02", "Build — complete the ETL job",
-         "Fill in 4 TODOs inside transform().  Everything else is wired up."),
-        ("04", "Upgrade — rewrite SQL as DataFrame API",
-         "Convert a working SQL job to the DataFrame API.  Then watch MLflow catch failures."),
+         "14 CSV files → dream_airlines_dw.* Delta tables.  Run it before the session."),
+        ("04", "Batch — rewrite SQL as DataFrame API",
+         "4 TODOs inside transform().  Check your result against the SQL version."),
+        ("05", "Stream — process only what is new",
+         "2 TODOs: turn the same logic into a streaming job with a checkpoint."),
+        ("07", "Operate — MLflow on call",
+         "5 TODOs: find failed and empty runs, read their logs, backfill."),
     ]
 
     sy = top + Inches(0.35)
@@ -362,7 +362,7 @@ def slide3_assignment(prs):
     # ── RIGHT: target schema + quality issues ─────────────────────
     section_label(slide, rx, top, "What you will build")
     schema = (
-        "analytics.booking_revenue_summary\n"
+        "daily booking revenue  (notebook 04)\n"
         "──────────────────────────────────\n"
         "booking_date       DATE\n"
         "travel_agency      STRING\n"
@@ -403,6 +403,204 @@ def slide3_assignment(prs):
         add_textbox(slide, rx + Inches(4.2), iy + Inches(0.02), Inches(1.75), Inches(0.24),
                     fix, 8, bold=True, color=PURPLE_DARK, font_name="Calibri")
         iy += Inches(0.33)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SLIDE — STREAMING
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def add_table(slide, left, top, col_x, header, rows, font_size=9):
+    """Simple text table: col_x are column offsets from `left`."""
+    width = col_x[-1]
+    for cx, label in zip(col_x[:-1], header):
+        add_textbox(slide, left + cx, top, Inches(3.5), Inches(0.25),
+                    label, font_size, bold=True, color=PURPLE_DARK, font_name="Calibri")
+    add_rect(slide, left, top + Inches(0.26), width, Emu(12000), PURPLE_MUTED)
+    y = top + Inches(0.32)
+    for row in rows:
+        for i, (cx, text) in enumerate(zip(col_x[:-1], row)):
+            add_textbox(slide, left + cx, y, col_x[i + 1] - cx, Inches(0.28),
+                        text, font_size, bold=(i == 0), color=PURPLE if i == 0 else BLACK,
+                        font_name="Calibri")
+        y += Inches(0.33)
+    return y
+
+
+def add_flow(slide, left, top, width, labels, highlight):
+    """Row of boxes joined by arrows; the highlighted one is the trainee's work."""
+    box_w, box_h, arrow_w = Inches(1.25), Inches(0.38), Inches(0.45)
+    total = len(labels) * box_w + (len(labels) - 1) * arrow_w
+    x = left + (width - total) / 2
+    for i, label in enumerate(labels):
+        add_rect(slide, x, top, box_w, box_h, PURPLE if label == highlight else PURPLE_DARK)
+        add_textbox(slide, x, top + Inches(0.06), box_w, Inches(0.28),
+                    label, 9, bold=True, color=WHITE, align=PP_ALIGN.CENTER, font_name="Calibri")
+        x += box_w
+        if i < len(labels) - 1:
+            add_textbox(slide, x, top + Inches(0.06), arrow_w, Inches(0.28),
+                        "→", 12, color=PURPLE_LIGHT, align=PP_ALIGN.CENTER, font_name="Calibri")
+            x += arrow_w
+
+
+def slide_streaming(prs):
+    slide = blank_slide(prs)
+    add_rect(slide, 0, 0, W, H, WHITE)
+    slide_header(slide, "Streaming", "From batch to stream — notebook 05")
+
+    top = Inches(0.95)
+    lx, rx = Inches(0.4), Inches(6.8)
+    col_w = Inches(6.0)
+
+    # ── LEFT ─────────────────────────────────────────────────────
+    section_label(slide, lx, top, "Same shape, different words")
+    y = add_table(
+        slide, lx, top + Inches(0.38),
+        [0, Inches(1.0), Inches(3.4), col_w],
+        ["", "JobBatch", "JobStream"],
+        [
+            ("Read",  "extract()  —  spark.table(...)",  "source()  —  spark.readStream"),
+            ("Logic", "transform()",                     "transform()  —  same DataFrame API"),
+            ("Write", "load()  —  df.write",             "sink()  —  df.writeStream...start()"),
+            ("Data",  "finite: the job ends by itself",  "unbounded: runs until stopped"),
+            ("Reruns", "reprocess everything in scope",  "only what arrived since the checkpoint"),
+        ],
+    )
+
+    section_label(slide, lx, y + Inches(0.2), "The streaming job")
+    add_flow(slide, lx, y + Inches(0.6), col_w, ["source()", "transform()", "sink()", "wait"], "transform()")
+    add_textbox(slide, lx, y + Inches(1.05), col_w, Inches(0.25),
+                "The three methods only describe the pipeline.  Nothing flows until sink() starts it.",
+                9, color=GRAY, align=PP_ALIGN.CENTER, font_name="Calibri")
+
+    section_label(slide, lx, y + Inches(1.5), "What the checkpoint buys you")
+    for i, (label, rows, note) in enumerate([
+        ("Run 1", "73 rows read", "bookings up to 2017"),
+        ("Run 2", "26 rows read", "only the new 2018 bookings"),
+    ]):
+        bx = lx + i * Inches(3.05)
+        add_rect(slide, bx, y + Inches(1.9), Inches(2.9), Inches(0.75), PURPLE_MUTED)
+        add_textbox(slide, bx + Inches(0.12), y + Inches(1.94), Inches(0.9), Inches(0.3),
+                    label, 9, bold=True, color=PURPLE_DARK, font_name="Calibri")
+        add_textbox(slide, bx + Inches(0.95), y + Inches(1.92), Inches(1.9), Inches(0.3),
+                    rows, 12, bold=True, color=BLACK, font_name="Calibri")
+        add_textbox(slide, bx + Inches(0.95), y + Inches(2.25), Inches(1.9), Inches(0.3),
+                    note, 9, color=GRAY, font_name="Calibri")
+
+    # ── RIGHT ────────────────────────────────────────────────────
+    section_label(slide, rx, top, "Your job in notebook 05")
+    code = (
+        "class AgencyRevenueStreamJob(SparkSessionMixin, JobStream):\n"
+        "\n"
+        "    def source(self):\n"
+        "        self.events = self.spark.readStream.table(\n"
+        "            self.settings.source_table)\n"
+        "        self.agencies = self.spark.table(\"...dim_travel_agency\")\n"
+        "\n"
+        "    def transform(self):\n"
+        "        # TODO 1  join each event with its agency (stream-static)\n"
+        "        # TODO 2  bookings and revenue per agency\n"
+        "        self.stream_df = ...\n"
+        "\n"
+        "    def sink(self):\n"
+        "        return (self.stream_df.writeStream\n"
+        "            .outputMode(\"complete\")\n"
+        "            .option(\"checkpointLocation\", ...)\n"
+        "            .trigger(availableNow=True)\n"
+        "            .toTable(self.settings.target_table))"
+    )
+    add_code_box(slide, rx, top + Inches(0.32), Inches(6.1), Inches(3.15), code, font_size=8.5)
+
+    section_label(slide, rx, top + Inches(3.7), "Spark or Flink")
+    add_textbox(slide, rx, top + Inches(4.05), Inches(6.1), Inches(1.0),
+                "JobStream runs on either engine: add SparkSessionMixin or FlinkSessionMixin.\n"
+                "A SQL transform is shared through self.sql(); sources and sinks are\n"
+                "engine-specific.  See jobs/examples/booking_stream_job.py.",
+                9, color=GRAY, font_name="Calibri")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SLIDE — MLFLOW
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def slide_mlflow(prs):
+    slide = blank_slide(prs)
+    add_rect(slide, 0, 0, W, H, WHITE)
+    slide_header(slide, "MLflow", "Operate a pipeline you can trust — notebook 07")
+
+    top = Inches(0.95)
+    lx, rx = Inches(0.4), Inches(6.8)
+    col_w = Inches(6.0)
+
+    # ── LEFT ─────────────────────────────────────────────────────
+    section_label(slide, lx, top, "What Job.run() logs — with no tracking code in the job")
+    y = add_table(
+        slide, lx, top + Inches(0.38),
+        [0, Inches(1.0), Inches(3.5), col_w],
+        ["Type", "Key", "Example"],
+        [
+            ("Tag",      "job, mode, engine",              "MonthlyAgencyRevenueJob, batch, spark"),
+            ("Tag",      "error  (failed runs)",           "RuntimeError: export has not arrived"),
+            ("Param",    "run parameters",                 "month = 2017-06"),
+            ("Metric",   "record_count, duration_seconds", "3,  4.2"),
+            ("Metric",   "<step>_seconds",                 "extract, transform, load"),
+            ("Artifact", "config/, logs/run.log",          "the YAML used, the full log"),
+        ],
+    )
+
+    section_label(slide, lx, y + Inches(0.2), "What only you can add")
+    add_code_box(slide, lx, y + Inches(0.55), col_w, Inches(0.75),
+                 "total = self.final_df.agg(F.sum(\"travel_revenue\")).first()[0] or 0\n"
+                 "self.log_metric(\"total_revenue\", total)", font_size=8.5)
+    add_textbox(slide, lx, y + Inches(1.4), col_w, Inches(0.5),
+                "A step that raises marks the run FAILED, keeps the traceback in its log\n"
+                "and re-raises.  The job never imports mlflow.",
+                9, color=GRAY, font_name="Calibri")
+
+    # ── RIGHT ────────────────────────────────────────────────────
+    section_label(slide, rx, top, "A year in production: 12 monthly runs")
+    states = ["ok", "ok", "ok", "failed", "ok", "failed", "ok", "failed", "empty", "ok", "ok", "ok"]
+    colors = {"ok": PURPLE_MUTED, "failed": PURPLE_DARK, "empty": PURPLE_LIGHT}
+    cell_w, gap = Inches(0.46), Inches(0.05)
+    for i, state in enumerate(states):
+        cx = rx + i * (cell_w + gap)
+        add_rect(slide, cx, top + Inches(0.42), cell_w, Inches(0.46), colors[state])
+        add_textbox(slide, cx, top + Inches(0.5), cell_w, Inches(0.3),
+                    f"{i + 1:02d}", 9, bold=True,
+                    color=PURPLE_DARK if state == "ok" else WHITE,
+                    align=PP_ALIGN.CENTER, font_name="Calibri")
+    legend = [("FINISHED", "ok"), ("FAILED  —  3 months", "failed"), ("FINISHED, but 0 rows", "empty")]
+    lgx = rx
+    for label, state in legend:
+        add_rect(slide, lgx, top + Inches(1.05), Inches(0.18), Inches(0.18), colors[state])
+        add_textbox(slide, lgx + Inches(0.24), top + Inches(1.0), Inches(2.0), Inches(0.28),
+                    label, 9, color=BLACK, font_name="Calibri")
+        lgx += Inches(1.35) if state == "ok" else Inches(2.1)
+    add_textbox(slide, rx, top + Inches(1.35), Inches(6.1), Inches(0.3),
+                "A FINISHED status only says the code did not crash.  The metrics say whether it did anything.",
+                9, italic=True, color=GRAY, font_name="Calibri")
+
+    section_label(slide, rx, top + Inches(1.85), "Your five tasks")
+    tasks = [
+        ("1", "Instrument",  "add a total_revenue metric to the job"),
+        ("2", "Find",        "the failed months, with mlflow.search_runs"),
+        ("3", "Explain",     "read the log stored with a failed run"),
+        ("4", "Detect",      "the month that finished with record_count = 0"),
+        ("5", "Backfill",    "rerun what is missing and confirm the year is complete"),
+    ]
+    ty = top + Inches(2.25)
+    for num, title, desc in tasks:
+        add_rect(slide, rx, ty, Inches(0.34), Inches(0.34), PURPLE_DARK)
+        add_textbox(slide, rx, ty + Inches(0.03), Inches(0.34), Inches(0.28),
+                    num, 9, bold=True, color=WHITE, align=PP_ALIGN.CENTER, font_name="Calibri")
+        add_textbox(slide, rx + Inches(0.46), ty + Inches(0.02), Inches(1.2), Inches(0.28),
+                    title, 10, bold=True, color=BLACK, font_name="Calibri")
+        add_textbox(slide, rx + Inches(1.55), ty + Inches(0.03), Inches(4.6), Inches(0.28),
+                    desc, 9, color=GRAY, font_name="Calibri")
+        ty += Inches(0.45)
+
+    add_textbox(slide, rx, ty + Inches(0.1), Inches(6.1), Inches(0.3),
+                "Each TODO is one to three lines, followed by a ✓ / ✗ check.",
+                9, bold=True, color=PURPLE, font_name="Calibri")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -504,6 +702,8 @@ if __name__ == "__main__":
     slide1_title(prs)
     slide2_structure(prs)
     slide3_assignment(prs)
+    slide_streaming(prs)
+    slide_mlflow(prs)
     slide4_solutions(prs)
 
     out = os.path.join(os.path.dirname(__file__), "slides.pptx")

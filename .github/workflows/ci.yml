@@ -55,3 +55,12 @@ jobs:
             exit 1
           fi
           echo "Merging this pull request will release v${version}."
+
+  docs:
+    name: Documentation updated with the code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0      # the check compares the branch with its base
+      - run: python3 scripts/check_docs_updated.py "origin/${{ github.base_ref }}"

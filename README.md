@@ -6,6 +6,13 @@ validated YAML configuration, logging and MLflow tracking built in.
 A job only contains its business steps. Everything around them (the MLflow
 run, parameters, timings, the log file, failure status) is inherited.
 
+**Documentation:** this README is the overview. The full wiki is in
+[`openwiki/`](openwiki/index.md): [quickstart](openwiki/quickstart.md),
+[architecture](openwiki/architecture.md), [writing jobs](openwiki/writing-jobs.md),
+[configuration](openwiki/configuration.md),
+[tracking and logging](openwiki/tracking-and-logging.md),
+[operations](openwiki/operations.md) and [training](openwiki/training.md).
+
 ---
 
 ## Architecture
@@ -61,8 +68,11 @@ pyspark_etl_boilerplate/
 │   └── examples/               # MyBatchJob, BookingStreamJob (Spark and Flink)
 ├── utils/                      # DataFrame, date and file helpers
 ├── tests/                      # pytest suite
+├── openwiki/                   # Documentation wiki (OpenWiki layout)
+├── scripts/                    # CI helpers (documentation check)
+├── .github/workflows/          # ci.yml (pull requests), release.yml (main)
 ├── data/                       # Sample data used by the examples and the training
-└── training/                   # Databricks training notebooks (see training/README.md)
+└── training/                   # Databricks notebooks and slides (see training/README.md)
 ```
 
 `etl/etl_interface.py` keeps the old `ETLInterface` name as a deprecated alias
@@ -329,6 +339,17 @@ Every pull request runs `.github/workflows/ci.yml`:
 1. **Pre-commit**: the hooks above.
 2. **Unit tests**: the pytest suite with Spark and Flink, once pre-commit passes.
 3. **Version**: fails if the `version` in `pyproject.toml` was already released.
+4. **Documentation**: fails if code changed without a documentation change.
+
+### Documentation
+
+The wiki in `openwiki/` follows the layout of
+[OpenWiki](https://docs.langchain.com/oss/openwiki/overview): one Markdown page
+per topic, with front matter, listed in `openwiki/index.md`. A pull request that
+changes `jobs/`, `utils/`, `etl/`, `config/` or `main.py` must also change
+`README.md` or a page under `openwiki/`; `scripts/check_docs_updated.py` enforces
+it in CI. Edit the pages by hand, or refresh them with `openwiki --update`
+(`npm install -g openwiki`, needs a model provider API key).
 
 Every merge to `main` is a release. `.github/workflows/release.yml` tags the
 commit `v<version>` and publishes a GitHub release with generated notes. The
