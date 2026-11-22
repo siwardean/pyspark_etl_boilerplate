@@ -5,7 +5,7 @@ PK_HotelBooking,FK_TravelBooking,DSC_TravelAgency,DSC_Employee,DSC_Customer,DSC_
 4,4,Travel Agency - Lisbon,Angela Goncalves,Ronronoa Zoro,Brazil,Grand Mercure Rio de Janeiro Copacabana,Half-Board,1,0908E7AB53EE89612334CEFFC94AFB2A7C204A16,2019-04-08 00:00:00,2019-04-08 00:00:00
 5,5,Travel Agency - Lisbon,Edilson Maracana,Monkey D. Luffy,Turkey,Neorion Hotel,Full-Board,1,1FC972E5DDC68E5FFDED09563834F55F9FF198CD,2019-04-08 00:00:00,2019-04-08 00:00:00
 6,6,Travel Agency - Faro,Mirela Jones,Akatuski Bakayaro Shibokai,France,Hotel France Louvre,Breakfast,1,A1D0777DB27F163111932AD135ECA01B5594D311,2019-04-08 00:00:00,2019-04-08 00:00:00
-7,7,Travel Agency - Porto,Vanderson Jesus,Nicoletta Maria Franscesca,Spain,Hotel BarcelÛ Raval,Breakfast,1,410A80F61E42A8EC7471DEB04773B6339E30582A,2019-04-08 00:00:00,2019-04-08 00:00:00
+7,7,Travel Agency - Porto,Vanderson Jesus,Nicoletta Maria Franscesca,Spain,Hotel Barcel√≥ Raval,Breakfast,1,410A80F61E42A8EC7471DEB04773B6339E30582A,2019-04-08 00:00:00,2019-04-08 00:00:00
 8,8,Travel Agency - Porto,Pedro Goncalves,Alexa Blue Cardinalle,Ukrain,Hotel Ukraine,Full-Board,1,B000AECA4F915A065F4DFB652C0B5B34F93165DC,2019-04-08 00:00:00,2019-04-08 00:00:00
 9,9,Travel Agency - Faro,Emily Smith,Vishna Hoffum Ballantyne,Australia,The Westin Sydney,Half-Board,1,E81C26D018C20984729F3ECA871747B9F1446EB0,2019-04-08 00:00:00,2019-04-08 00:00:00
 10,10,Travel Agency - Porto,Valeria Garcia,Elisia Hasaki Bockum,Russia,Moscow Marriott Grand Hotel,Half-Board,1,182C3BA249F36CE03B8B9ADC6E4E719FD238A29D,2019-04-08 00:00:00,2019-04-08 00:00:00
@@ -35,7 +35,7 @@ PK_HotelBooking,FK_TravelBooking,DSC_TravelAgency,DSC_Employee,DSC_Customer,DSC_
 34,40,Travel Agency - Lisbon,Jessica Lopes,Haroldo da Silva Ferreira,Brazil,Grand Mercure Rio de Janeiro Copacabana,Breakfast,1,07FADDCA809C52A8A39BE3DEC338AA22B691866A,2019-04-08 00:00:00,2019-04-08 00:00:00
 35,41,Travel Agency - Porto,Vanderson Jesus,Glaucia Domingues Ferreira,Russia,Moscow Marriott Grand Hotel,Half-Board,1,3D6654E55B079342C9D5882EF3D7CA1A3AEBC57F,2019-04-08 00:00:00,2019-04-08 00:00:00
 36,42,Travel Agency - Faro,Emily Smith,Gladys Coronel Brandao,Thailand,Anantara Siam Bangkok Hotel,Full-Board,1,5A41CA3780ABB2757D5096B7DF457E7CCF9F48D3,2019-04-08 00:00:00,2019-04-08 00:00:00
-37,43,Travel Agency - Faro,Emily Smith,Giusseppe Carmine Milano,Spain,Hotel BarcelÛ Raval,Breakfast,1,7A8C8E30AB097067C5FA00B1B67119B7A6A031A5,2019-04-08 00:00:00,2019-04-08 00:00:00
+37,43,Travel Agency - Faro,Emily Smith,Giusseppe Carmine Milano,Spain,Hotel Barcel√≥ Raval,Breakfast,1,7A8C8E30AB097067C5FA00B1B67119B7A6A031A5,2019-04-08 00:00:00,2019-04-08 00:00:00
 38,44,Travel Agency - Porto,Vanderson Jesus,Gislaine Russo Amaral,Germany,InterContinental Frankfurt,Full-Board,1,07C1434A9228C24B89F3D15478E6AEEB3049BCB1,2019-04-08 00:00:00,2019-04-08 00:00:00
 39,45,Travel Agency - Faro,Mirela Jones,Giovani Ferreira Machadinho,England,Copthorne Tara Hotel London Kensington,Full-Board,1,87BA814DFE52C7973544DB91E137027A1E273404,2019-04-08 00:00:00,2019-04-08 00:00:00
 40,46,Travel Agency - Porto,Pedro Goncalves,Fernanda Teixeira de Araujo,Brazil,Grand Mercure Rio de Janeiro Copacabana,Breakfast,1,F5A11C79486942C6B2CD13F1B84642337F98BC82,2019-04-08 00:00:00,2019-04-08 00:00:00
@@ -55,20 +55,20 @@ PK_HotelBooking,FK_TravelBooking,DSC_TravelAgency,DSC_Employee,DSC_Customer,DSC_
 54,61,Travel Agency - Faro,Mirela Jones,Deusdete dos Santos Farias,Brazil,Grand Mercure Rio de Janeiro Copacabana,Full-Board,1,583E17389283856ED84AA93DA9B6ABC7B2BEC64C,2019-04-08 00:00:00,2019-04-08 00:00:00
 55,62,Travel Agency - Lisbon,Jessica Lopes,Deocleciano Leite Martins,Norway,Quality hotel Olavsgaard,Half-Board,1,F8234264F635034532BA9696EF8E827FA9B2F4B2,2019-04-08 00:00:00,2019-04-08 00:00:00
 56,63,Travel Agency - Faro,Mirela Jones,Dennys Pimetinha Campos da Silva,Germany,InterContinental Frankfurt,Breakfast,1,5D5396B5672DB0AE80B583EFF9169DA2A0BAEC40,2019-04-08 00:00:00,2019-04-08 00:00:00
-57,64,Travel Agency - Porto,Pedro Goncalves,Doriana Maria Saliba Dias,Spain,Hotel BarcelÛ Raval,Breakfast,1,2040C27EE84314652015EFC9F8E3DA10B27847E2,2019-04-08 00:00:00,2019-04-08 00:00:00
+57,64,Travel Agency - Porto,Pedro Goncalves,Doriana Maria Saliba Dias,Spain,Hotel Barcel√≥ Raval,Breakfast,1,2040C27EE84314652015EFC9F8E3DA10B27847E2,2019-04-08 00:00:00,2019-04-08 00:00:00
 58,66,Travel Agency - Faro,Lucia Perez,Denise Belmonte Ferreira,Peru,Machu Picchu Suites,Breakfast,1,E1A182736B5D3A6765C14ED60A4092206D06CCBE,2019-04-08 00:00:00,2019-04-08 00:00:00
 59,67,Travel Agency - Lisbon,Angela Goncalves,Denir Tadeu Geraldini,Argentina,Tango de Mayo Hotel,Breakfast,1,25322434B3350AFEB98C81667BD794C1DFB93336,2019-04-08 00:00:00,2019-04-08 00:00:00
 60,69,Travel Agency - Lisbon,Alipio Jafosmega,Daniela Laselva Rebelo,France,Hotel France Louvre,Breakfast,1,425A381B928D15C11F285C0512D5140FC0AC1816,2019-04-08 00:00:00,2019-04-08 00:00:00
-61,70,Travel Agency - Lisbon,Jessica Lopes,Daniel Koiti Sato,Belgium,Radisson RED, Brussels,Half-Board,1,41CBDAF2011071D74AAEC37855365852E34D46D6,2019-04-08 00:00:00,2019-04-08 00:00:00
-62,71,Travel Agency - Faro,Lucia Perez,Daniel Ingo Haase,Spain,Hotel BarcelÛ Raval,Breakfast,1,4EB3246881FFD00EE7D445373DDA532698F7DBB7,2019-04-08 00:00:00,2019-04-08 00:00:00
+61,70,Travel Agency - Lisbon,Jessica Lopes,Daniel Koiti Sato,Belgium,"Radisson RED, Brussels",Half-Board,1,41CBDAF2011071D74AAEC37855365852E34D46D6,2019-04-08 00:00:00,2019-04-08 00:00:00
+62,71,Travel Agency - Faro,Lucia Perez,Daniel Ingo Haase,Spain,Hotel Barcel√≥ Raval,Breakfast,1,4EB3246881FFD00EE7D445373DDA532698F7DBB7,2019-04-08 00:00:00,2019-04-08 00:00:00
 63,72,Travel Agency - Faro,Emily Smith,Cynthia Cespedes de Carvalho,Brazil,Grand Mercure Rio de Janeiro Copacabana,Breakfast,1,E98011C271D90FDED7F5AEE6BA1EB6A0608B3923,2019-04-08 00:00:00,2019-04-08 00:00:00
 64,73,Travel Agency - Lisbon,Alipio Jafosmega,Dalva Lucia Pereira Borges,Germany,InterContinental Frankfurt,Half-Board,1,0D964BD8CD30073A8907E8819F7A3951AB6CEEFB,2019-04-08 00:00:00,2019-04-08 00:00:00
 65,75,Travel Agency - Lisbon,Jessica Lopes,Damiana Josialda da Silva,Italy,Milan Marriott Hotel,Breakfast,1,01C37A2BF014710003BCF64442158D65A2C00782,2019-04-08 00:00:00,2019-04-08 00:00:00
 66,76,Travel Agency - Porto,Eliana Silva,Dalcio Spedaletti Filho,Ukrain,Hotel Ukraine,Full-Board,1,A46A6A0E2CFC5CE4DE095957048A56BB5F880421,2019-04-08 00:00:00,2019-04-08 00:00:00
 67,77,Travel Agency - Lisbon,Angela Goncalves,Dagoberto de Oliveira,France,Hotel France Louvre,Breakfast,1,451C655A92EC82EC379A9BF7D45CE610F0430CE2,2019-04-08 00:00:00,2019-04-08 00:00:00
-68,78,Travel Agency - Lisbon,Alipio Jafosmega,Cyro da Silva Paula Filho,Switwerland,Hotel du ThÈ‚tre by Fassbind,Breakfast,1,64763CC3710AAF2EFD741453F4E4CBC604E0FA5E,2019-04-08 00:00:00,2019-04-08 00:00:00
+68,78,Travel Agency - Lisbon,Alipio Jafosmega,Cyro da Silva Paula Filho,Switwerland,Hotel du Th√©√¢tre by Fassbind,Breakfast,1,64763CC3710AAF2EFD741453F4E4CBC604E0FA5E,2019-04-08 00:00:00,2019-04-08 00:00:00
 69,79,Travel Agency - Porto,Eliana Silva,Cristina Manzano Pini,Germany,InterContinental Frankfurt,Half-Board,1,76B68425A854278B47129D75195F5E50CB04EC79,2019-04-08 00:00:00,2019-04-08 00:00:00
-70,82,Travel Agency - Faro,Kizua Gratid„o,Alessandra de Fatima Grizzo,Thailand,Anantara Siam Bangkok Hotel,Breakfast,1,27790BC44A9D21D20FB5EC007FE66BA151E7595A,2019-04-08 00:00:00,2019-04-08 00:00:00
+70,82,Travel Agency - Faro,Kizua Gratid√£o,Alessandra de Fatima Grizzo,Thailand,Anantara Siam Bangkok Hotel,Breakfast,1,27790BC44A9D21D20FB5EC007FE66BA151E7595A,2019-04-08 00:00:00,2019-04-08 00:00:00
 71,84,Travel Agency - Lisbon,Jessica Lopes,Aldo Yutaka Tabuse,Norway,Quality hotel Olavsgaard,Full-Board,1,C2A327F70FDE6613ED941703302EBAFB7D1B8475,2019-04-08 00:00:00,2019-04-08 00:00:00
 72,85,Travel Agency - Porto,Pedro Goncalves,Aldemir da Silva Pantalote,Brazil,Grand Mercure Rio de Janeiro Copacabana,Breakfast,1,BEB83D8473871A29E578655863A30F83F49979C6,2019-04-08 00:00:00,2019-04-08 00:00:00
 73,86,Travel Agency - Porto,Valeria Garcia,Alcines de Azevedo Filho,Argentina,Tango de Mayo Hotel,Breakfast,1,90EB58D3DD0F6703132AED2F7D6F1040D0489A86,2019-04-08 00:00:00,2019-04-08 00:00:00
@@ -76,9 +76,9 @@ PK_HotelBooking,FK_TravelBooking,DSC_TravelAgency,DSC_Employee,DSC_Customer,DSC_
 75,88,Travel Agency - Faro,Mirela Jones,Alberto Graziano de Oliveira,Peru,Machu Picchu Suites,Breakfast,1,21770ECE97BC748327EA9BB6ACD02CD7EAAB8641,2019-04-08 00:00:00,2019-04-08 00:00:00
 76,90,Travel Agency - Lisbon,Edilson Maracana,Adelvite Freire da Silva,Brazil,Grand Mercure Rio de Janeiro Copacabana,Breakfast,1,D3DE07533498650C52568E1B903C96215A7240C2,2019-04-08 00:00:00,2019-04-08 00:00:00
 77,91,Travel Agency - Faro,Mirela Jones,Adelson dos Santos,England,Copthorne Tara Hotel London Kensington,Half-Board,1,8D208CF33F10F22F35B9911ABA24A8235FA601C4,2019-04-08 00:00:00,2019-04-08 00:00:00
-78,92,Travel Agency - Porto,Valeria Garcia,Adauri Soares Silva,Spain,Hotel BarcelÛ Raval,Breakfast,1,DE29ED0E5C8E307C368AAA67B9A982C4450A2896,2019-04-08 00:00:00,2019-04-08 00:00:00
+78,92,Travel Agency - Porto,Valeria Garcia,Adauri Soares Silva,Spain,Hotel Barcel√≥ Raval,Breakfast,1,DE29ED0E5C8E307C368AAA67B9A982C4450A2896,2019-04-08 00:00:00,2019-04-08 00:00:00
 79,93,Travel Agency - Porto,Vanderson Jesus,Adalto Malaquias dos Santos,Italy,Milan Marriott Hotel,Full-Board,1,9B6BD13732F5384F601EF298AD5D21CAE1B9DB65,2019-04-08 00:00:00,2019-04-08 00:00:00
 80,94,Travel Agency - Faro,Emily Smith,Adalberto Maia de Oliveira,Germany,InterContinental Frankfurt,Breakfast,1,7B881A46909266BCCE121A53C65E8E5DA7252540,2019-04-08 00:00:00,2019-04-08 00:00:00
-81,95,Travel Agency - Lisbon,Angela Goncalves,Adailton de Jesus Silva,Switwerland,Hotel du ThÈ‚tre by Fassbind,Half-Board,1,4FD57CF5A6FBB3B90EEF1B5FD9CC5FF127150433,2019-04-08 00:00:00,2019-04-08 00:00:00
-82,98,Travel Agency - Porto,Vanderson Jesus,Abner Theodoro,Belgium,Radisson RED, Brussels,Half-Board,1,99A69C06DAA6A09EEC6FB734E566636D5C769346,2019-04-08 00:00:00,2019-04-08 00:00:00
+81,95,Travel Agency - Lisbon,Angela Goncalves,Adailton de Jesus Silva,Switwerland,Hotel du Th√©√¢tre by Fassbind,Half-Board,1,4FD57CF5A6FBB3B90EEF1B5FD9CC5FF127150433,2019-04-08 00:00:00,2019-04-08 00:00:00
+82,98,Travel Agency - Porto,Vanderson Jesus,Abner Theodoro,Belgium,"Radisson RED, Brussels",Half-Board,1,99A69C06DAA6A09EEC6FB734E566636D5C769346,2019-04-08 00:00:00,2019-04-08 00:00:00
 83,99,Travel Agency - Porto,Eliana Silva,Abel Pereira Viana,Brazil,Grand Mercure Rio de Janeiro Copacabana,Breakfast,1,4B9E69BACE4181A016940A1371F1FF8BA3FB73BA,2019-04-08 00:00:00,2019-04-08 00:00:00
