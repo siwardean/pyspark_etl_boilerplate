@@ -7,40 +7,55 @@ tags: [architecture, design]
 
 # Architecture
 
+The framework exists so that every pipeline has the same shape and contains
+only its business logic. The diagrams below show the classes that make that
+possible.
+
+## Core classes
+
 ```mermaid
 classDiagram
+    direction TB
     class Job {
-        +settings
-        +params
-        +config
+        <<abstract>>
+        +settings : JobSettings
+        +params : JobParams
+        +config : JobConfig
         +logger
-        +run(**params)
+        +run_id
+        +run(**params) Job
         +log_metric(key, value)
-        #_execute()
+        +set_tag(key, value)
+        #_execute()*
     }
     class JobBatch {
-        +extract()
-        +transform()
-        +load()
+        <<abstract>>
+        +final_df
+        +extract()*
+        +transform()*
+        +load()*
+        +count_records()
     }
     class JobStream {
-        +source()
-        +transform()
-        +sink()
+        <<abstract>>
+        +stream_df
+        +handle
+        +source()*
+        +transform()*
+        +sink()*
     }
     class SparkSessionMixin {
-        +spark
+        <<mixin>>
+        +spark : SparkSession
         +sql(query)
     }
     class FlinkSessionMixin {
-        +table_env
+        <<mixin>>
+        +table_env : TableEnvironment
         +sql(query)
     }
     Job <|-- JobBatch
     Job <|-- JobStream
-    SparkSessionMixin <.. JobBatch : optional
-    SparkSessionMixin <.. JobStream : optional
-    FlinkSessionMixin <.. JobStream : optional
 ```
 
 ## Two independent choices
@@ -73,6 +88,102 @@ everything around them, in one place:
 5. always logs the duration and attaches the run's log file.
 
 A concrete job therefore never imports `mlflow` or configures `logging`.
+
+## Configuration and tracking
+
+`Job` delegates two concerns. `JobConfig` loads the YAML file and validates each
+section into a typed model. `Tracker` is the only class that talks to MLflow.
+
+```mermaid
+classDiagram
+    direction LR
+    class Job {
+        <<abstract>>
+        +run(**params)
+    }
+    class JobConfig {
+        +path
+        +get(key, default)
+        +require(key)
+        +section(name)
+        +load(section, model)
+    }
+    class JobSettings {
+        +name
+        +env
+        +stream_timeout_seconds
+    }
+    class JobParams
+    class MlflowSettings {
+        +enabled
+        +experiment
+        +tracking_uri
+        +tags
+    }
+    class LoggingSettings {
+        +level
+    }
+    class Tracker {
+        +run_id
+        +start_run(name, tags, params)
+        +log_metric(key, value)
+        +set_tag(key, value)
+        +log_file(path)
+    }
+    Job *-- JobConfig : reads the YAML file
+    Job *-- JobSettings : settings
+    Job *-- JobParams : params
+    Job *-- Tracker : records the run
+    JobConfig ..> JobSettings : validates job
+    JobConfig ..> MlflowSettings : validates mlflow
+    JobConfig ..> LoggingSettings : validates logging
+    Tracker --> MlflowSettings
+```
+
+## Example jobs
+
+How the jobs in `jobs/examples/` are assembled. The streaming example keeps the
+transformation in an engine-neutral class and adds one thin subclass per engine.
+
+```mermaid
+classDiagram
+    direction TB
+    class JobBatch {
+        <<abstract>>
+    }
+    class JobStream {
+        <<abstract>>
+    }
+    class SparkSessionMixin {
+        <<mixin>>
+    }
+    class FlinkSessionMixin {
+        <<mixin>>
+    }
+    class MyBatchJob {
+        +extract()
+        +transform()
+        +load()
+    }
+    class BookingStreamJob {
+        +transform()
+    }
+    class BookingSparkStreamJob {
+        +source()
+        +sink()
+    }
+    class BookingFlinkStreamJob {
+        +source()
+        +sink()
+    }
+    JobBatch <|-- MyBatchJob
+    SparkSessionMixin <|-- MyBatchJob
+    JobStream <|-- BookingStreamJob
+    BookingStreamJob <|-- BookingSparkStreamJob
+    SparkSessionMixin <|-- BookingSparkStreamJob
+    BookingStreamJob <|-- BookingFlinkStreamJob
+    FlinkSessionMixin <|-- BookingFlinkStreamJob
+```
 
 ## Sessions are lazy
 

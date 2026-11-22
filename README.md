@@ -1,10 +1,32 @@
 # PySpark ETL Boilerplate
 
-A small framework for data jobs: batch or streaming, on Spark or Flink, with
-validated YAML configuration, logging and MLflow tracking built in.
+A standard, configuration-driven framework for building data engineering
+pipelines: batch or streaming, on Spark or Flink.
 
-A job only contains its business steps. Everything around them (the MLflow
-run, parameters, timings, the log file, failure status) is inherited.
+## What this is for
+
+Every data pipeline needs the same scaffolding: a session, configuration,
+logging, run tracking, error handling. When each pipeline writes its own, a team
+ends up with as many styles as it has pipelines, and every new one starts from a
+copy of an old one. This repository provides that scaffolding once, so that a
+pipeline is only its business logic.
+
+- **Standardised.** Every job has the same shape (`extract → transform → load`,
+  or `source → transform → sink`), the same entry point and the same way of
+  being configured, logged and tracked. Anyone on the team can open any job and
+  know where to look.
+- **Scalable.** The structure is the same for the first job and the fiftieth,
+  for a laptop and a cluster, for batch and streaming, on Spark or Flink. Adding
+  a pipeline means adding one class and one config file, not new plumbing.
+- **Configuration-based, per environment.** A job contains no environment
+  detail. Paths, cluster settings and tracking targets live in one YAML file per
+  environment (`config/dev`, `test`, `qa`, `prod`), so the same code is promoted
+  from one environment to the next by changing only `--conf`.
+- **Observable by default.** Each run is recorded in MLflow with its
+  parameters, timings, row counts, config and log, with no tracking code in the
+  job.
+- **Safe to change.** Settings and run parameters are validated before
+  anything starts, and the framework and example jobs are covered by tests.
 
 **Documentation:** this README is the overview. The full wiki is in
 [`openwiki/`](openwiki/index.md): [quickstart](openwiki/quickstart.md),
@@ -17,14 +39,54 @@ run, parameters, timings, the log file, failure status) is inherited.
 
 ## Architecture
 
-```
-Job                     config · logging · MLflow run            jobs/job.py
-├── JobBatch            extract() → transform() → load()         jobs/job_batch.py
-└── JobStream           source()  → transform() → sink()         jobs/job_stream.py
+### Core classes
 
-SparkSessionMixin       adds self.spark                          jobs/sessions/spark.py
-FlinkSessionMixin       adds self.table_env                      jobs/sessions/flink.py
+```mermaid
+classDiagram
+    direction TB
+    class Job {
+        <<abstract>>
+        +settings : JobSettings
+        +params : JobParams
+        +config : JobConfig
+        +logger
+        +run_id
+        +run(**params) Job
+        +log_metric(key, value)
+        +set_tag(key, value)
+        #_execute()*
+    }
+    class JobBatch {
+        <<abstract>>
+        +final_df
+        +extract()*
+        +transform()*
+        +load()*
+        +count_records()
+    }
+    class JobStream {
+        <<abstract>>
+        +stream_df
+        +handle
+        +source()*
+        +transform()*
+        +sink()*
+    }
+    class SparkSessionMixin {
+        <<mixin>>
+        +spark : SparkSession
+        +sql(query)
+    }
+    class FlinkSessionMixin {
+        <<mixin>>
+        +table_env : TableEnvironment
+        +sql(query)
+    }
+    Job <|-- JobBatch
+    Job <|-- JobStream
 ```
+
+A concrete job combines one mode with, optionally, one engine mixin:
 
 The **mode** (batch or stream) is chosen by inheritance, the **engine** by a
 mixin. `Job` itself has no engine, so a job that needs neither Spark nor Flink
@@ -41,6 +103,117 @@ Sessions are lazy: nothing is imported or started until `self.spark` (or
 `self.table_env`) is first used. `SparkSessionMixin` reuses the active session
 when there is one (notebooks, Databricks) and otherwise builds one from the
 `spark` section of the config.
+
+### Configuration and tracking
+
+`Job` delegates two concerns: `JobConfig` loads the YAML file and validates each
+section into a typed model, and `Tracker` is the only class that talks to MLflow.
+
+```mermaid
+classDiagram
+    direction LR
+    class Job {
+        <<abstract>>
+        +run(**params)
+    }
+    class JobConfig {
+        +path
+        +get(key, default)
+        +require(key)
+        +section(name)
+        +load(section, model)
+    }
+    class JobSettings {
+        +name
+        +env
+        +stream_timeout_seconds
+    }
+    class JobParams
+    class MlflowSettings {
+        +enabled
+        +experiment
+        +tracking_uri
+        +tags
+    }
+    class LoggingSettings {
+        +level
+    }
+    class Tracker {
+        +run_id
+        +start_run(name, tags, params)
+        +log_metric(key, value)
+        +set_tag(key, value)
+        +log_file(path)
+    }
+    Job *-- JobConfig : reads the YAML file
+    Job *-- JobSettings : settings
+    Job *-- JobParams : params
+    Job *-- Tracker : records the run
+    JobConfig ..> JobSettings : validates job
+    JobConfig ..> MlflowSettings : validates mlflow
+    JobConfig ..> LoggingSettings : validates logging
+    Tracker --> MlflowSettings
+```
+
+### Example jobs
+
+How the jobs in `jobs/examples/` are assembled. The streaming example keeps the
+transformation in an engine-neutral class and adds one thin subclass per engine.
+
+```mermaid
+classDiagram
+    direction TB
+    class JobBatch {
+        <<abstract>>
+    }
+    class JobStream {
+        <<abstract>>
+    }
+    class SparkSessionMixin {
+        <<mixin>>
+    }
+    class FlinkSessionMixin {
+        <<mixin>>
+    }
+    class MyBatchJob {
+        +extract()
+        +transform()
+        +load()
+    }
+    class BookingStreamJob {
+        +transform()
+    }
+    class BookingSparkStreamJob {
+        +source()
+        +sink()
+    }
+    class BookingFlinkStreamJob {
+        +source()
+        +sink()
+    }
+    JobBatch <|-- MyBatchJob
+    SparkSessionMixin <|-- MyBatchJob
+    JobStream <|-- BookingStreamJob
+    BookingStreamJob <|-- BookingSparkStreamJob
+    SparkSessionMixin <|-- BookingSparkStreamJob
+    BookingStreamJob <|-- BookingFlinkStreamJob
+    FlinkSessionMixin <|-- BookingFlinkStreamJob
+```
+
+### One job, one config file per environment
+
+```mermaid
+flowchart LR
+    code["One job class<br/>DailyRevenueJob"]
+    dev["config/dev/daily_revenue.yaml"]
+    test["config/test/daily_revenue.yaml"]
+    qa["config/qa/daily_revenue.yaml"]
+    prod["config/prod/daily_revenue.yaml"]
+    code --> dev --> D["local Spark · sample data · dev experiment"]
+    code --> test --> T["test cluster · test bucket"]
+    code --> qa --> Q["QA cluster · QA bucket"]
+    code --> prod --> P["production cluster · production bucket"]
+```
 
 ---
 
