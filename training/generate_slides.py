@@ -218,7 +218,7 @@ def slide1_title(prs):
 def slide2_structure(prs):
     slide = blank_slide(prs)
     add_rect(slide, 0, 0, W, H, WHITE)
-    slide_header(slide, "The Boilerplate", "How every ETL job in this repo is structured")
+    slide_header(slide, "The Boilerplate", "How every job in this repo is structured")
 
     top = Inches(0.95)
 
@@ -232,22 +232,22 @@ def slide2_structure(prs):
         "├── main.py              # entry point\n"
         "├── config/\n"
         "│   ├── dev/             # per-environment\n"
-        "│   ├── test/\n"
-        "│   ├── qa/\n"
-        "│   └── prod/\n"
-        "├── etl/\n"
-        "│   ├── etl_interface.py # abstract base\n"
-        "│   ├── etl_config.py    # config loader\n"
-        "│   └── my_etl_job.py    # sample job\n"
+        "│   └── test/ qa/ prod/\n"
+        "├── jobs/\n"
+        "│   ├── job.py           # Job: MLflow + logs\n"
+        "│   ├── job_batch.py     # JobBatch\n"
+        "│   ├── job_stream.py    # JobStream\n"
+        "│   ├── config.py        # YAML loader\n"
+        "│   ├── sessions/        # Spark, Flink\n"
+        "│   └── examples/        # sample jobs\n"
         "└── utils/\n"
-        "    ├── config.py        # SparkSession\n"
         "    ├── toolbox.py\n"
         "    └── ..."
     )
     add_code_box(slide, lx, top + Inches(0.32), col_w, Inches(2.55), repo_tree, font_size=8.5)
 
     section_label(slide, lx, top + Inches(3.05), "Config sections")
-    pills = ["[SPARK_CONTEXT]", "[COS]", "[DATABASE]", "[SPARK]", "[KAFKA]"]
+    pills = ["job", "storage", "database", "spark", "mlflow", "logging"]
     px = lx
     for pill in pills:
         pw = Inches(len(pill) * 0.085 + 0.2)
@@ -256,8 +256,8 @@ def slide2_structure(prs):
                     pill, 8, bold=True, color=PURPLE_DARK, font_name="Courier New")
         px += pw + Inches(0.08)
 
-    note = ("All Spark session properties are sourced from [SPARK_CONTEXT].\n"
-            "Placeholders like {bucket} are resolved from [COS] at read time.")
+    note = ("YAML config: Spark session settings come from the spark section.\n"
+            "Placeholders like {bucket} are resolved from storage at read time.")
     add_textbox(slide, lx, top + Inches(3.78), col_w, Inches(0.5),
                 note, 9, color=GRAY, font_name="Calibri")
 
@@ -266,7 +266,7 @@ def slide2_structure(prs):
 
     section_label(slide, rx, top, "Execution flow")
     add_textbox(slide, rx, top + Inches(0.33), Inches(6.4), Inches(0.25),
-                "spark-submit main.py  --className …  --confPath …",
+                "python main.py  --job …  --conf …  --param run_date=…",
                 8.5, color=GRAY, align=PP_ALIGN.CENTER, font_name="Courier New")
 
     # flow boxes
@@ -298,7 +298,7 @@ def slide2_structure(prs):
 
     section_label(slide, rx, top + Inches(1.3), "Every job follows the same contract")
     contract_code = (
-        "class MyETLJob(ETLInterface):\n"
+        "class MyJob(SparkSessionMixin, JobBatch):\n"
         "\n"
         "    def extract(self):\n"
         "        # read from source\n"
@@ -309,11 +309,11 @@ def slide2_structure(prs):
         "    def load(self):\n"
         "        # write output\n"
         "\n"
-        "    def run(self):\n"
-        "        with mlflow.start_run():\n"
-        "            self.extract()\n"
-        "            self.transform()\n"
-        "            self.load()"
+        "# run() is inherited from Job: it opens the\n"
+        "# MLflow run, logs params, timings and the\n"
+        "# log file, and marks failures as FAILED\n"
+        "\n"
+        "MyJob(conf).run(run_date=\"2016-03-15\")"
     )
     add_code_box(slide, rx, top + Inches(1.62), Inches(6.4), Inches(2.9), contract_code)
 

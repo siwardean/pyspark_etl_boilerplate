@@ -32,14 +32,15 @@ Good luck.
 ## What is this training about?
 
 This is an applied illustration of the ETL boilerplate defined in this
-repository. Every pattern you use here — `ETLInterface`, `ETLConfig`,
-`[SPARK_CONTEXT]`, MLflow tracking — maps directly to a real file in `etl/`
-or `utils/`. The exercises are designed to be your reference point the first
+repository. Every pattern you use here — `JobBatch`, `JobStream`,
+`SparkSessionMixin`, the YAML config, MLflow tracking — maps directly to a real
+file in `jobs/`. The exercises are designed to be your reference point the first
 time you build a production job on top of this framework.
 
 By the end you will have built a working daily ETL pipeline, profiled real
 data quality issues, written the same transformation twice (SQL then DataFrame
-API), and used MLflow to detect and recover from simulated pipeline failures.
+API), used MLflow to detect and recover from simulated pipeline failures, and
+turned a batch job into a streaming one that only processes new data.
 
 ---
 
@@ -114,18 +115,39 @@ flowchart LR
 | `02` | `02_etl_exercise` | Build the analytics table — 4 TODOs to complete | Yes |
 | `03` | `03_etl_solution` | Full solution with design notes | Instructor only |
 | `04` | `04_dataframe_api_exercise` | Rewrite a SQL job using the DataFrame API + MLflow gap tracker | Yes |
+| `05` | `05_job_stream_exercise` | Turn the batch logic into a streaming job — 2 TODOs to complete | Yes |
+| `06` | `06_job_stream_solution` | Full streaming solution with answers to the questions | Instructor only |
 
-Notebooks `02` and `04` follow the exact class structure from the boilerplate:
+Notebooks `04` and `05` use the class structure from the boilerplate:
 
 ```python
-class YourETLJob(ETLInterface):
+class YourBatchJob(SparkSessionMixin, JobBatch):       # notebook 04
     def extract(self): ...      # read sources
     def transform(self): ...    # your work lives here
     def load(self): ...         # write output
-    def run(self): ...          # MLflow wraps it all
+
+class YourStreamJob(SparkSessionMixin, JobStream):     # notebook 05
+    def source(self): ...       # open the stream
+    def transform(self): ...    # your work lives here
+    def sink(self): ...         # start writing
 ```
 
-You fill in `transform()`. Everything else is already wired up.
+You fill in `transform()`. There is no `run()` to write: it is inherited from
+`Job`, which opens the MLflow run, logs parameters, timings and the log file,
+and marks the run as failed if a step raises.
+
+### Suggested 2-hour agenda
+
+| Time | Topic | Material |
+|---|---|---|
+| 0:00–0:15 | Architecture: `Job` → `JobBatch` / `JobStream`, session mixins | slides, `jobs/` |
+| 0:15–0:45 | Batch job: SQL to DataFrame API, tracking for free | notebook `04`, parts 1–2 |
+| 0:45–1:10 | MLflow: failed runs, stored logs, gap detection, backfill | notebook `04`, part 3 |
+| 1:10–1:20 | Break | |
+| 1:20–1:50 | Streaming job: source, transform, sink, checkpoint | notebook `05` |
+| 1:50–2:00 | Wrap-up: batch vs stream, Flink example walkthrough | `jobs/examples/` |
+
+Notebooks `00` to `03` are the pre-requisite material from the first session.
 
 ---
 
@@ -146,28 +168,42 @@ Part of the job is finding these before you write a single transformation:
 ## Notebook 04 — the MLflow tracker
 
 Once your daily job is running, notebook `04` simulates two weeks of execution
-with three injected failures, then shows how to query MLflow to find the gaps
-and rerun only the missing dates. This pattern — log every run, query for gaps,
+with three injected failures, then shows how to query MLflow to find the gaps,
+read the stored log of a failed run, and rerun only the missing dates. This pattern — log every run, query for gaps,
 backfill — is the operational backbone of any reliable data pipeline.
+
+---
+
+## Notebook 05 — the streaming job
+
+The same framework runs a Spark Structured Streaming job. Bookings arrive in two
+waves; the second run only reads the new ones, because the checkpoint remembers
+what was already processed. MLflow shows how many rows each run actually read.
+
+Flink is supported by the framework (`FlinkSessionMixin`,
+`jobs/examples/booking_flink_job.py`) but is not part of the notebooks, because
+Databricks does not run Flink.
 
 ---
 
 ## Configuration
 
-The training notebooks use:
+The notebooks read their settings from YAML files in `config/dev/`:
 
-```
-config/dev/training_notebook.properties
-```
+| Notebook | Config file |
+|---|---|
+| `04` | `training_daily_revenue.yaml` |
+| `05`, `06` | `training_stream.yaml` |
 
-A copy of `example.properties` with `spark.app.name=training_notebook`.
-Adjust `DATA_PATH` in `00_setup_data` to point to your local clone of the repo.
+The notebooks locate the repository from their own workspace path, so there is
+nothing to adjust. MLflow runs go to one experiment per trainee, under
+`/Users/<you>/`.
 
 ---
 
 ## Learning objectives
 
-After completing all four notebooks you will be able to:
+After completing the notebooks you will be able to:
 
 1. Load CSV sources into a Delta Lake raw layer
 2. Profile data quality — nulls, duplicates, referential integrity
@@ -175,4 +211,5 @@ After completing all four notebooks you will be able to:
 4. Apply `COALESCE`, LEFT JOINs, and aggregation with the DataFrame API
 5. Explain why the DataFrame API is preferable to SQL for production ETL
 6. Use MLflow to track daily runs, detect gaps, and trigger backfills
-7. Package any transformation inside the `ETLInterface` structure for production deployment
+7. Package any transformation inside a `JobBatch` for production deployment
+8. Write a `JobStream` with a source, a transformation and a sink, and explain what the checkpoint does

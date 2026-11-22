@@ -79,7 +79,7 @@
 # MAGIC |---|---|
 # MAGIC | 1 | Run V1 and read the SQL in `transform()` — note where it is painful |
 # MAGIC | 2 | Fill in the 4 TODOs in `DailyBookingRevenueJobV2.transform()` |
-# MAGIC | 3 | Add one MLflow metric of your choice to `run()` |
+# MAGIC | 3 | Add one MLflow metric of your choice with `self.log_metric()` |
 # MAGIC | 4 | Observe the MLflow tracker: see gaps, run backfill, confirm coverage |
 # MAGIC
 # MAGIC > **Pre-requisite:** Run `00_setup_data` first.
@@ -91,35 +91,54 @@
 
 # COMMAND ----------
 
-import os
+import sys
 from datetime import date, timedelta
+from pathlib import Path
 
-config_content = """
-[SPARK_CONTEXT]
-spark.app.name=DailyBookingRevenueJob
+# Resolve the project root from the notebook's own workspace path.
+_nb_path = dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath().get()
+REPO_ROOT = Path(f"/Workspace{_nb_path}").parent.parent   # training/ → project root
+sys.path.insert(0, str(REPO_ROOT))
 
-[SPARK]
-env=dev
-loadMethod=incremental
-targetfilepath=/tmp/dreamairlines/daily_revenue
-"""
-os.makedirs("/tmp/dreamairlines", exist_ok=True)
-with open("/tmp/dreamairlines/job.properties", "w") as f:
-    f.write(config_content)
-
-CONFIG_PATH = "/tmp/dreamairlines/job.properties"
+CONFIG_PATH = str(REPO_ROOT / "config" / "dev" / "training_daily_revenue.yaml")
+print(open(CONFIG_PATH).read())
 
 # COMMAND ----------
 
-import sys
-sys.path.insert(0, "/path/to/pyspark_etl_boilerplate")   # adjust to your repo path
-
-from pyspark.sql import functions as F
-from etl.etl_interface import ETLInterface
 import mlflow
+from pyspark.sql import functions as F
 
-EXPERIMENT_NAME = "/DreamAirlines/DailyBookingRevenue"
+from jobs import JobBatch, SparkSessionMixin
+
+# One experiment per trainee, so everyone sees only their own runs.
+_user = spark.sql("SELECT current_user()").first()[0]
+EXPERIMENT_NAME = f"/Users/{_user}/dreamairlines_daily_booking_revenue"
 mlflow.set_experiment(EXPERIMENT_NAME)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### How a job is built
+# MAGIC
+# MAGIC ```
+# MAGIC Job                     config · logging · MLflow run          (jobs/job.py)
+# MAGIC ├── JobBatch            extract() → transform() → load()       (jobs/job_batch.py)
+# MAGIC └── JobStream           source()  → transform() → sink()       (jobs/job_stream.py)
+# MAGIC
+# MAGIC SparkSessionMixin       adds self.spark                        (jobs/sessions/spark.py)
+# MAGIC ```
+# MAGIC
+# MAGIC A job only writes its three steps. `run()` is inherited: it opens the MLflow
+# MAGIC run, logs the parameters and the config file, times each step, captures the
+# MAGIC log output and marks the run as failed if a step raises.
+# MAGIC
+# MAGIC | Inside a step | What it gives you |
+# MAGIC |---|---|
+# MAGIC | `self.spark` | the Spark session (the Databricks one is reused) |
+# MAGIC | `self.config.get("job.target_path")` | a value from the YAML config |
+# MAGIC | `self.params["run_date"]` | what was passed to `job.run(run_date=...)` |
+# MAGIC | `self.logger.info(...)` | a log line, stored with the MLflow run |
+# MAGIC | `self.log_metric("name", value)` | a metric on the MLflow run |
 
 # COMMAND ----------
 
@@ -132,20 +151,21 @@ mlflow.set_experiment(EXPERIMENT_NAME)
 # MAGIC   CTE and again inside `CASE WHEN` — because SQL can't reuse an alias in the
 # MAGIC   same SELECT. The DataFrame API computes it once as a named column.
 # MAGIC - There is no way to inspect the join result before the aggregation runs.
+# MAGIC - There is no `run()` method and no MLflow code: both come from `Job`.
 
 # COMMAND ----------
 
-class DailyBookingRevenueJobV1(ETLInterface):
+class DailyBookingRevenueJobV1(SparkSessionMixin, JobBatch):
     """Daily ETL — total booking revenue by agency/destination/class. SQL version."""
 
     def extract(self):
-        self.dim_travel_booking = spark.table("dream_airlines_dw.dim_travel_booking")
-        self.dim_customer       = spark.table("dream_airlines_dw.dim_customer")
-        self.dim_date           = spark.table("dream_airlines_dw.dim_date")
-        self.fact_travel        = spark.table("dream_airlines_dw.fact_travel_booking")
-        self.fact_hotel         = spark.table("dream_airlines_dw.fact_hotel_booking")
-        self.fact_car           = spark.table("dream_airlines_dw.fact_car_renting")
-        self.fact_insurance     = spark.table("dream_airlines_dw.fact_insurance")
+        self.dim_travel_booking = self.spark.table("dream_airlines_dw.dim_travel_booking")
+        self.dim_customer       = self.spark.table("dream_airlines_dw.dim_customer")
+        self.dim_date           = self.spark.table("dream_airlines_dw.dim_date")
+        self.fact_travel        = self.spark.table("dream_airlines_dw.fact_travel_booking")
+        self.fact_hotel         = self.spark.table("dream_airlines_dw.fact_hotel_booking")
+        self.fact_car           = self.spark.table("dream_airlines_dw.fact_car_renting")
+        self.fact_insurance     = self.spark.table("dream_airlines_dw.fact_insurance")
 
         for name, df in [
             ("dim_travel_booking", self.dim_travel_booking),
@@ -158,8 +178,9 @@ class DailyBookingRevenueJobV1(ETLInterface):
         ]:
             df.createOrReplaceTempView(name)
 
-    def transform(self, run_date: str):
-        self.final_df = spark.sql(f"""
+    def transform(self):
+        run_date = self.params["run_date"]
+        self.final_df = self.spark.sql(f"""
             WITH booking_revenue AS (
                 SELECT
                     d.Date                                          AS booking_date,
@@ -205,28 +226,15 @@ class DailyBookingRevenueJobV1(ETLInterface):
             ORDER BY total_revenue DESC
         """)
 
-    def load(self, run_date: str):
-        out = self.config.get("spark.targetfilepath") + f"/run_date={run_date}"
+    def load(self):
+        out = self.config.require("job.target_path") + f"/run_date={self.params['run_date']}"
         self.final_df.write.mode("overwrite").parquet(out)
-
-    def run(self, run_date: str):
-        with mlflow.start_run(run_name=f"DailyBookingRevenue-{run_date}"):
-            mlflow.set_tag("job",     "DailyBookingRevenueJob")
-            mlflow.set_tag("version", "v1")
-            mlflow.log_param("env",       self.config.get("spark.env"))
-            mlflow.log_param("load_type", self.config.get("spark.loadMethod"))
-            mlflow.log_param("run_date",  run_date)
-            self.extract()
-            self.transform(run_date)
-            self.load(run_date)
-            mlflow.log_metric("record_count", self.final_df.count())
-            mlflow.log_artifact(self.config_path)
 
 # COMMAND ----------
 
 sample_date = "2016-03-15"
 job_v1 = DailyBookingRevenueJobV1(CONFIG_PATH)
-job_v1.run(sample_date)
+job_v1.run(run_date=sample_date)
 display(job_v1.final_df)
 
 # COMMAND ----------
@@ -262,21 +270,22 @@ display(job_v1.final_df)
 
 # COMMAND ----------
 
-class DailyBookingRevenueJobV2(ETLInterface):
+class DailyBookingRevenueJobV2(SparkSessionMixin, JobBatch):
     """Daily ETL — total booking revenue by agency/destination/class. DataFrame API version."""
 
     # ── extract — do not modify ───────────────────────────────────────────────
     def extract(self):
-        self.dim_travel_booking = spark.table("dream_airlines_dw.dim_travel_booking")
-        self.dim_customer       = spark.table("dream_airlines_dw.dim_customer")
-        self.dim_date           = spark.table("dream_airlines_dw.dim_date")
-        self.fact_travel        = spark.table("dream_airlines_dw.fact_travel_booking")
-        self.fact_hotel         = spark.table("dream_airlines_dw.fact_hotel_booking")
-        self.fact_car           = spark.table("dream_airlines_dw.fact_car_renting")
-        self.fact_insurance     = spark.table("dream_airlines_dw.fact_insurance")
+        self.dim_travel_booking = self.spark.table("dream_airlines_dw.dim_travel_booking")
+        self.dim_customer       = self.spark.table("dream_airlines_dw.dim_customer")
+        self.dim_date           = self.spark.table("dream_airlines_dw.dim_date")
+        self.fact_travel        = self.spark.table("dream_airlines_dw.fact_travel_booking")
+        self.fact_hotel         = self.spark.table("dream_airlines_dw.fact_hotel_booking")
+        self.fact_car           = self.spark.table("dream_airlines_dw.fact_car_renting")
+        self.fact_insurance     = self.spark.table("dream_airlines_dw.fact_insurance")
 
     # ── transform ─────────────────────────────────────────────────────────────
-    def transform(self, run_date: str):
+    def transform(self):
+        run_date = self.params["run_date"]
 
         # ── TODO 1: Join dim_travel_booking with dim_date and dim_customer ────
         # - inner join dim_date    on Booking_Date == PK_Date
@@ -335,32 +344,19 @@ class DailyBookingRevenueJobV2(ETLInterface):
             .orderBy(F.col("total_revenue").desc())
         )
 
-    # ── load — do not modify ──────────────────────────────────────────────────
-    def load(self, run_date: str):
-        out = self.config.get("spark.targetfilepath") + f"/run_date={run_date}"
+    # ── load — do not modify except Task 3 ────────────────────────────────────
+    def load(self):
+        out = self.config.require("job.target_path") + f"/run_date={self.params['run_date']}"
         self.final_df.write.mode("overwrite").parquet(out)
-
-    # ── run — do not modify except Task 3 ────────────────────────────────────
-    def run(self, run_date: str):
-        with mlflow.start_run(run_name=f"DailyBookingRevenue-{run_date}"):
-            mlflow.set_tag("job",     "DailyBookingRevenueJob")
-            mlflow.set_tag("version", "v2")
-            mlflow.log_param("env",       self.config.get("spark.env"))
-            mlflow.log_param("load_type", self.config.get("spark.loadMethod"))
-            mlflow.log_param("run_date",  run_date)
-            self.extract()
-            self.transform(run_date)
-            self.load(run_date)
-            mlflow.log_metric("record_count", self.final_df.count())
-            # ── TASK 3: add one more MLflow metric ────────────────────────────
-            # Ideas: total_revenue for the day, num_bookings, max revenue_tier count
-            # mlflow.log_metric("...", ...)
-            mlflow.log_artifact(self.config_path)
+        # ── TASK 3: add one more MLflow metric ────────────────────────────────
+        # record_count and the step durations are already logged for you.
+        # Ideas: total_revenue for the day, num_bookings, number of "High" tier rows
+        # self.log_metric("...", ...)
 
 # COMMAND ----------
 
 job_v2 = DailyBookingRevenueJobV2(CONFIG_PATH)
-job_v2.run(sample_date)
+job_v2.run(run_date=sample_date)
 display(job_v2.final_df)
 
 # COMMAND ----------
@@ -393,9 +389,10 @@ else:
 # MAGIC the cluster timed out, an upstream schema changed. Without tracking, you discover
 # MAGIC the gap days later when an analyst notices missing data in their dashboard.
 # MAGIC
-# MAGIC Because every `run()` call wraps execution in `mlflow.start_run()` and logs
-# MAGIC `run_date` as a parameter, you can query MLflow at any time to see exactly
-# MAGIC which dates succeeded and which need to be rerun.
+# MAGIC Because `Job.run()` opens an MLflow run for every execution, logs `run_date`
+# MAGIC as a parameter and marks the run `FAILED` when a step raises, you can query
+# MAGIC MLflow at any time to see exactly which dates succeeded and which need to be
+# MAGIC rerun. The job itself contains no tracking code.
 # MAGIC
 # MAGIC > **Nothing to fill in here — read the code and observe the output.**
 
@@ -406,6 +403,16 @@ else:
 
 FAIL_DATES = {"2016-01-12", "2016-01-15", "2016-01-19"}
 
+
+class FlakyUpstreamJob(DailyBookingRevenueJobV2):
+    """Same job, but the source "did not arrive" on the failure dates."""
+
+    def extract(self):
+        if self.params["run_date"] in FAIL_DATES:
+            raise RuntimeError(f"Simulated upstream failure for {self.params['run_date']}")
+        super().extract()
+
+
 run_dates = [str(date(2016, 1, 10) + timedelta(days=i)) for i in range(14)]
 
 print(f"Running job for: {run_dates[0]} → {run_dates[-1]}")
@@ -413,19 +420,10 @@ print(f"Failures injected on: {sorted(FAIL_DATES)}\n")
 
 for run_date in run_dates:
     try:
-        if run_date in FAIL_DATES:
-            raise RuntimeError(f"Simulated upstream failure for {run_date}")
-
-        job = DailyBookingRevenueJobV2(CONFIG_PATH)
-        job.run(run_date)
+        FlakyUpstreamJob(CONFIG_PATH).run(run_date=run_date)
         print(f"  ✓  {run_date}")
-
     except Exception as e:
-        with mlflow.start_run(run_name=f"DailyBookingRevenue-{run_date}"):
-            mlflow.set_tag("job",     "DailyBookingRevenueJob")
-            mlflow.set_tag("version", "v2")
-            mlflow.log_param("run_date", run_date)
-            mlflow.set_tag("mlflow.note", str(e))
+        # Nothing to record here: Job.run() already marked the MLflow run as FAILED.
         print(f"  ✗  {run_date}  — FAILED: {e}")
 
 # COMMAND ----------
@@ -442,13 +440,28 @@ runs_df = mlflow.search_runs(
 )
 
 successful = set(runs_df[runs_df["status"] == "FINISHED"]["params.run_date"].dropna())
-failed     = set(runs_df[runs_df["status"] != "FINISHED"]["params.run_date"].dropna())
+failed     = set(runs_df[runs_df["status"] != "FINISHED"]["params.run_date"].dropna()) - successful
 
 print("=" * 50)
 print(f"  Successful : {len(successful)}  dates")
 print(f"  Failed     : {len(failed)}  dates")
 print(f"\n  Dates to rerun: {sorted(failed)}")
 print("=" * 50)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Why did a run fail?
+# MAGIC
+# MAGIC Each run keeps its error in a tag and its full log as an artifact, so the
+# MAGIC cause is one query away. No need to dig through cluster logs.
+
+# COMMAND ----------
+
+failed_runs = runs_df[runs_df["status"] == "FAILED"].sort_values("params.run_date")
+display(failed_runs[["params.run_date", "status", "tags.error"]])
+
+print(mlflow.artifacts.load_text(f"runs:/{failed_runs.iloc[0]['run_id']}/logs/run.log"))
 
 # COMMAND ----------
 
@@ -460,8 +473,7 @@ print("=" * 50)
 print("Backfilling failed dates...\n")
 for run_date in sorted(failed):
     try:
-        job = DailyBookingRevenueJobV2(CONFIG_PATH)
-        job.run(run_date)
+        DailyBookingRevenueJobV2(CONFIG_PATH).run(run_date=run_date)
         print(f"  ✓  {run_date}  — backfill successful")
     except Exception as e:
         print(f"  ✗  {run_date}  — still failing: {e}")
@@ -498,5 +510,5 @@ else:
 # MAGIC | Intermediate inspection | Impossible without restructuring query | `display(enriched.limit(5))` after any step |
 # MAGIC | Multiple LEFT JOINs | All in one opaque SQL block | Each join is a named, readable line |
 # MAGIC | `COALESCE` for nulls | Inside SELECT list | `.withColumn()` — explicit and testable |
-# MAGIC | Daily parameterisation | String interpolation in SQL | `run_date` passed as clean Python arg |
-# MAGIC | Pipeline reliability | No built-in tracking | MLflow logs every run — gaps queryable |
+# MAGIC | Daily parameterisation | String interpolation in SQL | `run_date` read from `self.params` |
+# MAGIC | Pipeline reliability | MLflow logs every run — gaps queryable | Same: tracking comes from `Job.run()`, not from the job |

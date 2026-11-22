@@ -1,0 +1,18 @@
+# Used by training/05_job_stream_exercise on Databricks.
+
+job:
+  name: AgencyRevenueStreamJob
+  env: dev
+  source_table: dream_airlines_dw.booking_events
+  target_table: analytics.agency_revenue_stream
+  checkpoint_path: /tmp/dreamairlines/checkpoints/agency_revenue_stream
+
+spark:
+  spark.sql.shuffle.partitions: 8
+
+# The experiment is chosen in the notebook (one per trainee).
+mlflow:
+  enabled: true
+
+logging:
+  level: INFO
