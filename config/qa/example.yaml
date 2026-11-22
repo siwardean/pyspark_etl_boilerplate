@@ -1,0 +1,29 @@
+job:
+  env: qa
+  load_method: full
+  source_path: "{bucket}/input/data.csv"
+  target_path: "{bucket}/output/data_clean"
+  partition_by: [country, year]
+
+# Keys in `storage` and `database` can be used as {placeholders} in any value.
+storage:
+  bucket: s3://my-data-bucket-qa
+
+database:
+  host: qa-db-host
+  port: 5432
+  dbname: my_database_qa
+
+spark:
+  spark.app.name: MyBatchJob-qa
+  spark.master: yarn
+  spark.jars: /opt/spark/jars/postgresql-42.2.jar
+  spark.executor.memory: 4g
+  spark.executor.cores: 2
+
+mlflow:
+  enabled: true
+  experiment: MyBatchJob-qa
+
+logging:
+  level: INFO

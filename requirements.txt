@@ -1,5 +1,0 @@
-pyspark
-mlflow
-kafka-python
-boto3
-pytest

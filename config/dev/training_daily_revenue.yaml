@@ -1,0 +1,18 @@
+# Used by training/04_dataframe_api_exercise on Databricks.
+
+job:
+  name: DailyBookingRevenueJob
+  env: dev
+  load_method: incremental
+  target_path: /tmp/dreamairlines/daily_revenue
+
+# A Databricks session already exists, so only runtime settings apply here.
+spark:
+  spark.sql.shuffle.partitions: 8
+
+# The experiment is chosen in the notebook (one per trainee).
+mlflow:
+  enabled: true
+
+logging:
+  level: INFO

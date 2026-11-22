@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local run outputs
+mlruns/
+mlflow.db
+output/
+spark-warehouse/
+metastore_db/
+derby.log

@@ -1,0 +1,30 @@
+job:
+  env: prod
+  load_method: full
+  source_path: "{bucket}/input/data.csv"
+  target_path: "{bucket}/output/data_clean"
+  partition_by: [country, year]
+
+# Keys in `storage` and `database` can be used as {placeholders} in any value.
+storage:
+  bucket: s3://my-data-bucket-prod
+
+database:
+  host: prod-db-host
+  port: 5432
+  dbname: my_database_prod
+
+spark:
+  spark.app.name: MyBatchJob-prod
+  spark.master: yarn
+  spark.jars: /opt/spark/jars/postgresql-42.2.jar
+  spark.executor.memory: 8g
+  spark.executor.cores: 4
+  spark.sql.shuffle.partitions: 400
+
+mlflow:
+  enabled: true
+  experiment: MyBatchJob-prod
+
+logging:
+  level: INFO

@@ -1,0 +1,16 @@
+# Used by training/07_mlflow_exercise and 08_mlflow_solution on Databricks.
+
+job:
+  name: MonthlyAgencyRevenueJob
+  env: dev
+  target_table: analytics.monthly_agency_revenue
+
+spark:
+  spark.sql.shuffle.partitions: 8
+
+# The experiment is chosen in the notebook (one per trainee).
+mlflow:
+  enabled: true
+
+logging:
+  level: INFO
