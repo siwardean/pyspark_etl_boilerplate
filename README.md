@@ -1,7 +1,7 @@
 # PySpark ETL Boilerplate
 
 A small framework for data jobs: batch or streaming, on Spark or Flink, with
-YAML configuration, logging and MLflow tracking built in.
+validated YAML configuration, logging and MLflow tracking built in.
 
 A job only contains its business steps. Everything around them (the MLflow
 run, parameters, timings, the log file, failure status) is inherited.
@@ -45,7 +45,7 @@ pyspark_etl_boilerplate/
 ├── requirements.txt            # Core dependencies
 ├── requirements-flink.txt      # Only for jobs using FlinkSessionMixin
 ├── config/
-│   ├── dev/                    # example.yaml, example_stream.yaml, example_flink.yaml, training_*.yaml
+│   ├── dev/                    # example.yaml, example_stream.yaml, training_*.yaml
 │   ├── test/                   # example.yaml
 │   ├── qa/
 │   └── prod/
@@ -53,14 +53,15 @@ pyspark_etl_boilerplate/
 │   ├── job.py                  # Job: run() template, MLflow, logging
 │   ├── job_batch.py            # JobBatch
 │   ├── job_stream.py           # JobStream
+│   ├── settings.py             # JobSettings, JobParams: typed, validated (pydantic)
 │   ├── config.py               # JobConfig: YAML loader with {placeholder} resolution
 │   ├── tracking.py             # The only module that talks to MLflow
 │   ├── logs.py                 # Console format and per-run log file
 │   ├── sessions/               # SparkSessionMixin, FlinkSessionMixin
-│   └── examples/               # MyBatchJob, BookingStreamJob, BookingFlinkJob
+│   └── examples/               # MyBatchJob, BookingStreamJob (Spark and Flink)
 ├── utils/                      # DataFrame, date and file helpers
 ├── tests/                      # pytest suite
-├── data/dreamAirlines_DW/      # Sample data used by the examples and the training
+├── data/                       # Sample data used by the examples and the training
 └── training/                   # Databricks training notebooks (see training/README.md)
 ```
 
@@ -77,17 +78,17 @@ pip install -r requirements.txt
 # Batch: CSV → cleaned Parquet
 python main.py --job jobs.examples.my_batch_job.MyBatchJob --conf config/dev/example.yaml
 
-# Spark Structured Streaming: booking files → enriched Parquet
-python main.py --job jobs.examples.booking_stream_job.BookingStreamJob --conf config/dev/example_stream.yaml
+# Streaming on Spark: booking files → cleaned Parquet
+python main.py --job jobs.examples.booking_stream_job.BookingSparkStreamJob --conf config/dev/example_stream.yaml
 
-# Flink (pip install -r requirements-flink.txt): running revenue per agency
-python main.py --job jobs.examples.booking_flink_job.BookingFlinkJob --conf config/dev/example_flink.yaml
+# The same streaming job on Flink (pip install -r requirements-flink.txt)
+python main.py --job jobs.examples.booking_stream_job.BookingFlinkStreamJob --conf config/dev/example_stream.yaml
 
 # See the tracked runs
 mlflow ui
 ```
 
-The dev examples read `data/dreamAirlines_DW/` and write to `output/`. Run
+The dev examples read from `data/` and write to `output/`. Run
 parameters are passed with `--param`, repeatable:
 
 ```bash
@@ -101,66 +102,123 @@ python main.py --job my_package.my_module.MyJob --conf config/dev/my_job.yaml --
 ### Batch
 
 ```python
-from jobs import JobBatch, SparkSessionMixin
+from datetime import date
+
+from jobs import JobBatch, JobParams, JobSettings, SparkSessionMixin
 
 
 class DailyRevenueJob(SparkSessionMixin, JobBatch):
+
+    class Settings(JobSettings):          # keys this job needs in the `job` config section
+        source_path: str
+        target_path: str
+        partition_by: list[str] = []
+
+    class Params(JobParams):              # what changes on every run
+        run_date: date
+
     def extract(self):
-        self.df = self.spark.read.parquet(self.config.require("job.source_path"))
+        self.df = self.spark.read.parquet(self.settings.source_path)
 
     def transform(self):
-        run_date = self.params["run_date"]              # from job.run(run_date=...)
-        self.final_df = self.df.filter(self.df["date"] == run_date)
+        self.final_df = self.df.filter(self.df["date"] == self.params.run_date)
 
     def load(self):
-        self.final_df.write.mode("overwrite").parquet(self.config.require("job.target_path"))
+        self.final_df.write.mode("overwrite").parquet(self.settings.target_path)
         self.log_metric("days_processed", 1)            # optional custom metric
 
 
 DailyRevenueJob("config/dev/daily_revenue.yaml").run(run_date="2016-03-15")
 ```
 
+`Settings` and `Params` are [pydantic](https://docs.pydantic.dev) models. They
+are optional, but declaring them gives you:
+
+- **Fail-fast validation.** A missing `target_path` raises `ConfigError` when the
+  job is created, before Spark starts; `run(run_date="oops")` is rejected before
+  the run begins. The message names the field.
+- **Typed values.** `self.params.run_date` is a `date`, `self.settings.partition_by`
+  a list, with defaults where you set them.
+- **A readable contract.** The top of the class says what the job needs.
+
+Keys you do not declare remain readable (`self.settings.anything`).
+
 ### Stream
 
 ```python
-from jobs import JobStream, SparkSessionMixin
+from jobs import JobSettings, JobStream, SparkSessionMixin
 
 
 class BookingStreamJob(SparkSessionMixin, JobStream):
+
+    class Settings(JobSettings):
+        source_table: str
+        target_table: str
+        checkpoint_path: str
+
     def source(self):
-        self.events = self.spark.readStream.table(self.config.require("job.source_table"))
+        self.events = self.spark.readStream.table(self.settings.source_table)
 
     def transform(self):
         self.stream_df = self.events.filter("AMT_Travel IS NOT NULL")
 
     def sink(self):
         return (self.stream_df.writeStream
-                .option("checkpointLocation", self.config.require("job.checkpoint_path"))
+                .option("checkpointLocation", self.settings.checkpoint_path)
                 .trigger(availableNow=True)
-                .toTable(self.config.require("job.target_table")))
+                .toTable(self.settings.target_table))
 ```
 
 `source()`, `transform()` and `sink()` only describe the pipeline. `sink()`
-starts it and returns the running handle; `JobStream` then waits on it, logging
-each micro-batch, until the stream ends or `job.stream_timeout_seconds` elapses.
+starts it and returns the running handle; `JobStream` then waits on it until the
+stream ends or `job.stream_timeout_seconds` elapses.
+
+### One streaming job on Spark or Flink
+
+`JobStream` works with either engine. What is portable between them is the
+transformation, when it is written in SQL: both session mixins expose
+`self.sql(query)`. Sources and sinks are connectors, which are engine-specific,
+so each engine gets a thin subclass. `jobs/examples/booking_stream_job.py` shows
+the pattern:
+
+```python
+class BookingStreamJob(JobStream):                 # engine-neutral
+    def transform(self):
+        self.stream_df = self.sql(CLEAN_BOOKINGS)  # same SQL on both engines
+
+class BookingSparkStreamJob(SparkSessionMixin, BookingStreamJob):
+    def source(self): ...                          # spark.readStream → temp view `bookings`
+    def sink(self): ...                            # writeStream → Parquet
+
+class BookingFlinkStreamJob(FlinkSessionMixin, BookingStreamJob):
+    def source(self): ...                          # CREATE TABLE bookings WITH (connector...)
+    def sink(self): ...                            # execute_insert → CSV
+```
+
+The engine is chosen with `--job`; the config file is the same. A test checks
+that both produce identical rows. Per-batch row counts are reported to MLflow on
+Spark only; a Flink run records its Flink job id.
 
 ### What every step can use
 
 | Inside a step | What it gives you |
 |---|---|
-| `self.config.get("section.key", default)` | a config value, with its YAML type |
-| `self.config.require("section.key")` | same, but fails clearly when the key is missing |
-| `self.params["name"]` | what was passed to `job.run(name=...)` |
+| `self.settings.<key>` | a validated value from the `job` config section |
+| `self.params.<name>` | a validated value passed to `job.run(name=...)` |
+| `self.config.get("section.key", default)` | any other config value, with its YAML type |
 | `self.logger` | a standard Python logger, stored with the run |
 | `self.log_metric(key, value)` / `self.set_tag(key, value)` | tracking on the current MLflow run |
-| `self.spark` / `self.table_env` | the engine session, when the mixin is used |
+| `self.spark` / `self.table_env` / `self.sql(query)` | the engine session, when a mixin is used |
+
+After a run, `job.run_id` is the MLflow run id and `job.final_df` the result.
 
 ---
 
 ## Configuration
 
 One YAML file per job and environment. Values keep their type (booleans,
-numbers, lists), and are addressed as `section.key`.
+numbers, lists). The `job`, `mlflow` and `logging` sections are validated when
+the job is created; a typo such as `experimnt:` is rejected.
 
 ```yaml
 job:
@@ -199,10 +257,11 @@ logging:
   level: INFO
 ```
 
-A missing file, invalid YAML or a missing required key raises `ConfigError`
-with the file and key name. Credentials do not belong in these files: the MLflow
+A missing file, invalid YAML, an invalid value or a missing required key raises
+`ConfigError` with the file and field name. Credentials do not belong in these files: the MLflow
 server is taken from the `MLFLOW_TRACKING_URI` environment variable (already set
-on Databricks; a local `./mlruns` store is used when it is absent).
+on Databricks; MLflow falls back to a local store in the working directory when
+it is absent).
 
 Where a Spark session already exists, cluster-level settings such as
 `spark.master` are ignored and only runtime settings are applied.
@@ -247,4 +306,4 @@ pip install -r requirements.txt
 pytest tests/
 ```
 
-The Spark tests need Java; the Flink test is skipped unless PyFlink is installed.
+The Spark tests need Java; the Flink tests are skipped unless PyFlink is installed.

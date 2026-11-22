@@ -1,11 +1,11 @@
-# Spark Structured Streaming example, runnable locally from the repo root:
-#   python main.py --job jobs.examples.booking_stream_job.BookingStreamJob --conf config/dev/example_stream.yaml
+# Streaming example, runnable locally from the repo root on either engine:
+#   python main.py --job jobs.examples.booking_stream_job.BookingSparkStreamJob --conf config/dev/example_stream.yaml
+#   python main.py --job jobs.examples.booking_stream_job.BookingFlinkStreamJob --conf config/dev/example_stream.yaml
+# (the Flink one needs: pip install -r requirements-flink.txt)
 
 job:
   env: dev
-  source_path: "{bucket}/dreamAirlines_DW"
-  source_files: "factTravelBooking*.csv"
-  agency_path: "{bucket}/dreamAirlines_DW/dimTravelAgency.csv"
+  source_path: "{bucket}/booking_events"      # landing directory: every file in it is read
   target_path: "{output}/booking_stream"
   # stream_timeout_seconds: 60     # stop a never-ending stream after this long
 
@@ -13,10 +13,16 @@ storage:
   bucket: data
   output: output
 
+# Used by BookingSparkStreamJob: passed as-is to the SparkSession builder.
 spark:
   spark.app.name: BookingStreamJob
   spark.master: "local[*]"
   spark.sql.shuffle.partitions: 4
+
+# Used by BookingFlinkStreamJob: passed as-is to the Flink TableEnvironment.
+flink:
+  pipeline.name: BookingStreamJob
+  parallelism.default: 1
 
 mlflow:
   enabled: true

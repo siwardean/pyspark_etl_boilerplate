@@ -44,5 +44,5 @@ class JobStream(Job):
         self._run_step(self.transform)
         self.handle = self._run_step(self.sink)
         self.logger.info("stream: running")
-        self._await_stream(self.handle, self.config.get("job.stream_timeout_seconds"))
+        self._await_stream(self.handle, self.settings.stream_timeout_seconds)
         self.logger.info("stream: stopped")

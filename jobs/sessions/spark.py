@@ -57,6 +57,10 @@ class SparkSessionMixin:
     def spark(self, session):
         self._spark = session
 
+    def sql(self, query):
+        """Run a SQL query and return a DataFrame. Same call as on the Flink mixin."""
+        return self.spark.sql(query)
+
     def count_records(self):
         """Rows in ``self.final_df``. This runs the query once more; set
         ``track_record_count = False`` on jobs where that is too expensive."""

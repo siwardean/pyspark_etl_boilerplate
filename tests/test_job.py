@@ -1,10 +1,13 @@
 """The run() template, tested with plain-Python jobs: no engine involved."""
+from datetime import date
 from pathlib import Path
 
 import mlflow
 import pytest
 
-from jobs import JobBatch, JobStream
+from pydantic import ValidationError
+
+from jobs import ConfigError, JobBatch, JobParams, JobSettings, JobStream
 
 EXPERIMENT = "test-jobs"
 
@@ -17,8 +20,11 @@ def make_config(**mlflow_settings):
 
 
 class NumbersJob(JobBatch):
+    class Params(JobParams):
+        size: int = 5
+
     def extract(self):
-        self.numbers = list(range(self.params.get("size", 5)))
+        self.numbers = list(range(self.params.size))
 
     def transform(self):
         self.final_df = [n * 2 for n in self.numbers]
@@ -48,6 +54,7 @@ def test_successful_run_is_tracked(last_run):
     assert run.data.tags["mode"] == "batch"
     assert run.data.tags["engine"] == "python"
     assert run.data.params == {"env": "test", "size": "4"}
+    assert job.params.size == 4
     assert run.data.metrics["record_count"] == 4
     assert run.data.metrics["total"] == 12
     assert {"duration_seconds", "extract_seconds", "transform_seconds", "load_seconds"} <= set(run.data.metrics)
@@ -79,6 +86,7 @@ def test_failed_run_is_marked_failed_and_reraised(last_run):
     run = last_run(EXPERIMENT)
     assert run.info.status == "FAILED"
     assert run.data.params["run_date"] == "2016-01-12"
+    assert run.info.run_name == "BrokenJob-5-2016-01-12"
     assert run.data.tags["error"] == "ValueError: upstream file missing"
     assert "record_count" not in run.data.metrics
     assert "duration_seconds" in run.data.metrics
@@ -136,3 +144,50 @@ def test_stream_job_without_engine_explains_what_is_missing():
 
     with pytest.raises(NotImplementedError, match="session mixin"):
         NoEngine(make_config(enabled=False)).run()
+
+
+class TypedJob(JobBatch):
+    class Settings(JobSettings):
+        target_path: str
+        partition_by: list[str] = []
+
+    class Params(JobParams):
+        run_date: date
+
+    def extract(self): ...
+    def transform(self): ...
+    def load(self): ...
+
+
+def test_settings_are_validated_and_typed():
+    job = TypedJob({"job": {"target_path": "{bucket}/out", "extra_key": 1}, "storage": {"bucket": "s3://b"}})
+
+    assert job.settings.target_path == "s3://b/out"
+    assert job.settings.partition_by == []
+    assert job.settings.env == "dev"
+    assert job.settings.extra_key == 1  # undeclared keys stay readable
+
+
+def test_missing_setting_fails_when_the_job_is_created():
+    with pytest.raises(ConfigError, match=r"Invalid 'job' section.*\n  - target_path: Field required"):
+        TypedJob({"job": {"env": "test"}})
+
+
+def test_unknown_mlflow_or_logging_key_is_rejected():
+    with pytest.raises(ConfigError, match="experimnt"):
+        NumbersJob({"mlflow": {"experimnt": "typo"}})
+    with pytest.raises(ConfigError, match="level"):
+        NumbersJob({"logging": {"level": "LOUD"}})
+
+
+def test_run_params_are_validated_and_parsed(last_run):
+    config = {"job": {"target_path": "/tmp/out"}, "mlflow": {"experiment": EXPERIMENT}}
+
+    job = TypedJob(config).run(run_date="2016-03-15")
+    assert job.params.run_date == date(2016, 3, 15)
+    assert last_run(EXPERIMENT).data.params["run_date"] == "2016-03-15"
+
+    with pytest.raises(ValidationError, match="run_date"):
+        TypedJob(config).run(run_date="not a date")
+    with pytest.raises(ValidationError, match="run_date"):
+        TypedJob(config).run()

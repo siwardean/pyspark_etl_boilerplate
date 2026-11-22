@@ -42,6 +42,10 @@ class FlinkSessionMixin:
     def table_env(self, table_env):
         self._table_env = table_env
 
+    def sql(self, query):
+        """Run a SQL query and return a Table. Same call as on the Spark mixin."""
+        return self.table_env.sql_query(query)
+
     def _await_stream(self, table_result, timeout=None):
         """Wait for a TableResult returned by ``execute_insert`` / ``execute_sql``."""
         client = table_result.get_job_client()

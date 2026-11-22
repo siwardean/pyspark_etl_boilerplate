@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 
 import yaml
+from pydantic import ValidationError
 
 _MISSING = object()
 _PLACEHOLDER = re.compile(r"\{(\w+)\}")
@@ -15,8 +16,8 @@ class ConfigError(Exception):
 class JobConfig:
     """Read-only view over a YAML config file (or a plain dict).
 
-    Values are addressed as ``"section.key"`` and keep their YAML type.
-    Scalars declared in ``PLACEHOLDER_SECTIONS`` can be referenced from any
+    ``load()`` validates a whole section into a typed settings model; ``get()``
+    reads a single value addressed as ``"section.key"``. Scalars declared in ``PLACEHOLDER_SECTIONS`` can be referenced from any
     string value as ``{key}``::
 
         storage:
@@ -64,6 +65,19 @@ class JobConfig:
         if value is _MISSING or value is None:
             raise ConfigError(f"Missing required config key '{key}' in {self.path or 'config'}")
         return value
+
+    def load(self, section, model):
+        """Validate a section into a pydantic model, e.g. ``load("job", JobSettings)``."""
+        try:
+            return model.model_validate(self._resolve(self.section(section)))
+        except ValidationError as error:
+            problems = "\n".join(
+                f"  - {'.'.join(str(part) for part in issue['loc']) or section}: {issue['msg']}"
+                for issue in error.errors()
+            )
+            raise ConfigError(
+                f"Invalid '{section}' section in {self.path or 'config'}:\n{problems}"
+            ) from error
 
     def section(self, name):
         """Return a whole section as a dict (empty when the section is absent)."""

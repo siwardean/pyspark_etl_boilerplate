@@ -1,4 +1,5 @@
 """The Spark session mixin and the example jobs, on a local Spark session."""
+import shutil
 from pathlib import Path
 
 import pytest
@@ -6,7 +7,7 @@ import pytest
 pyspark = pytest.importorskip("pyspark")
 
 from jobs import JobBatch, SparkSessionMixin  # noqa: E402
-from jobs.examples.booking_stream_job import BookingStreamJob  # noqa: E402
+from jobs.examples.booking_stream_job import BookingSparkStreamJob  # noqa: E402
 from jobs.examples.my_batch_job import MyBatchJob  # noqa: E402
 
 DATA = Path(__file__).resolve().parent.parent / "data" / "dreamAirlines_DW"
@@ -69,24 +70,21 @@ def test_batch_job_writes_parquet_and_tracks_the_run(tmp_path, last_run):
 
 
 def test_stream_job_processes_new_files_only(tmp_path, last_run):
+    source = tmp_path / "landing"
+    source.mkdir()
+    shutil.copy(DATA / "factTravelBooking.csv", source / "bookings_1.csv")
     config = {
-        "job": {
-            "env": "test",
-            "source_path": str(DATA),
-            "source_files": "factTravelBooking*.csv",
-            "agency_path": str(DATA / "dimTravelAgency.csv"),
-            "target_path": str(tmp_path / "stream"),
-        },
+        "job": {"env": "test", "source_path": str(source), "target_path": str(tmp_path / "stream")},
         "spark": SPARK_CONF,
         "mlflow": {"experiment": "spark-stream"},
     }
 
-    job = BookingStreamJob(config).run()
+    job = BookingSparkStreamJob(config).run()
 
     rows = job.spark.read.parquet(str(tmp_path / "stream"))
     assert rows.count() == 99
-    assert rows.columns == ["booking_id", "booking_date", "travel_agency", "travel_revenue"]
-    assert rows.filter("travel_agency IS NULL OR booking_date IS NULL").count() == 0
+    assert rows.columns == ["booking_id", "booking_date", "travel_agency_id", "travel_revenue"]
+    assert rows.filter("booking_date IS NULL OR travel_revenue IS NULL").count() == 0
     run = last_run("spark-stream")
     assert run.info.status == "FINISHED"
     assert run.data.tags["mode"] == "stream"
@@ -94,9 +92,17 @@ def test_stream_job_processes_new_files_only(tmp_path, last_run):
     assert run.data.metrics["batch_count"] >= 1
 
     # Same checkpoint, no new file: the second run has nothing to do.
-    BookingStreamJob(config).run()
+    BookingSparkStreamJob(config).run()
     assert last_run("spark-stream").data.metrics["record_count"] == 0
-    assert job.spark.read.parquet(str(tmp_path / "stream")).count() == 99
+
+    # A new file lands: only that file is read.
+    (source / "bookings_2.csv").write_text(
+        "PK_TravelBooking,FK_date,FK_TravelAgency,FK_Employee,FK_HotelBooking,FK_Customer,AMT_Travel\n"
+        "1000,20181001,1,1,11,99,250.00\n1001,20181002,2,1,11,98,90.00\n"
+    )
+    BookingSparkStreamJob(config).run()
+    assert last_run("spark-stream").data.metrics["record_count"] == 2
+    assert job.spark.read.parquet(str(tmp_path / "stream")).count() == 101
 
 
 def test_active_session_is_reused_and_gets_runtime_settings_only():
