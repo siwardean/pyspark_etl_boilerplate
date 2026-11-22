@@ -70,8 +70,9 @@
 # MAGIC
 # MAGIC ## Your mission
 # MAGIC
-# MAGIC A working daily ETL job already exists (`DailyBookingRevenueJobV1`). It runs
-# MAGIC each day and processes all bookings made on that date.
+# MAGIC A working daily job already exists (`DailyBookingRevenueJobV1`). It runs each
+# MAGIC day and processes all bookings made on that date. Its logic is one large SQL
+# MAGIC statement.
 # MAGIC
 # MAGIC **Your tasks:**
 # MAGIC
@@ -79,8 +80,7 @@
 # MAGIC |---|---|
 # MAGIC | 1 | Run V1 and read the SQL in `transform()` — note where it is painful |
 # MAGIC | 2 | Fill in the 4 TODOs in `DailyBookingRevenueJobV2.transform()` |
-# MAGIC | 3 | Add one MLflow metric of your choice with `self.log_metric()` |
-# MAGIC | 4 | Observe the MLflow tracker: see gaps, run backfill, confirm coverage |
+# MAGIC | 3 | Check that V2 returns the same result as V1, and look at what was tracked |
 # MAGIC
 # MAGIC > **Pre-requisite:** Run `00_setup_data` first.
 
@@ -92,7 +92,7 @@
 # COMMAND ----------
 
 import sys
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 # Resolve the project root from the notebook's own workspace path.
@@ -108,7 +108,7 @@ print(open(CONFIG_PATH).read())
 import mlflow
 from pyspark.sql import functions as F
 
-from jobs import JobBatch, SparkSessionMixin
+from jobs import JobBatch, JobParams, JobSettings, SparkSessionMixin
 
 # One experiment per trainee, so everyone sees only their own runs.
 _user = spark.sql("SELECT current_user()").first()[0]
@@ -135,10 +135,47 @@ mlflow.set_experiment(EXPERIMENT_NAME)
 # MAGIC | Inside a step | What it gives you |
 # MAGIC |---|---|
 # MAGIC | `self.spark` | the Spark session (the Databricks one is reused) |
-# MAGIC | `self.config.get("job.target_path")` | a value from the YAML config |
-# MAGIC | `self.params["run_date"]` | what was passed to `job.run(run_date=...)` |
+# MAGIC | `self.settings.target_path` | a value from the `job` section of the YAML config |
+# MAGIC | `self.params.run_date` | what was passed to `job.run(run_date=...)` |
 # MAGIC | `self.logger.info(...)` | a log line, stored with the MLflow run |
 # MAGIC | `self.log_metric("name", value)` | a metric on the MLflow run |
+# MAGIC
+# MAGIC `Settings` and `Params` declare what the job needs. They are checked before
+# MAGIC anything runs: a missing config key or a malformed date fails immediately,
+# MAGIC with a message that names the field.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### The shared part of the job
+# MAGIC
+# MAGIC Both versions of the job read the same tables and write to the same place.
+# MAGIC Only `transform()` differs, so `extract()` and `load()` live in a base class.
+# MAGIC **Read it, do not modify.**
+
+# COMMAND ----------
+
+class DailyBookingRevenueBase(SparkSessionMixin, JobBatch):
+    """Daily booking revenue by agency / destination / class. Subclasses add transform()."""
+
+    class Settings(JobSettings):
+        target_path: str
+
+    class Params(JobParams):
+        run_date: date        # job.run(run_date="2018-07-15") is parsed to a date
+
+    def extract(self):
+        self.dim_travel_booking = self.spark.table("dream_airlines_dw.dim_travel_booking")
+        self.dim_customer       = self.spark.table("dream_airlines_dw.dim_customer")
+        self.dim_date           = self.spark.table("dream_airlines_dw.dim_date")
+        self.fact_travel        = self.spark.table("dream_airlines_dw.fact_travel_booking")
+        self.fact_hotel         = self.spark.table("dream_airlines_dw.fact_hotel_booking")
+        self.fact_car           = self.spark.table("dream_airlines_dw.fact_car_renting")
+        self.fact_insurance     = self.spark.table("dream_airlines_dw.fact_insurance")
+
+    def load(self):
+        out = f"{self.settings.target_path}/run_date={self.params.run_date}"
+        self.final_df.write.mode("overwrite").parquet(out)
 
 # COMMAND ----------
 
@@ -155,17 +192,11 @@ mlflow.set_experiment(EXPERIMENT_NAME)
 
 # COMMAND ----------
 
-class DailyBookingRevenueJobV1(SparkSessionMixin, JobBatch):
-    """Daily ETL — total booking revenue by agency/destination/class. SQL version."""
+class DailyBookingRevenueJobV1(DailyBookingRevenueBase):
+    """SQL version."""
 
-    def extract(self):
-        self.dim_travel_booking = self.spark.table("dream_airlines_dw.dim_travel_booking")
-        self.dim_customer       = self.spark.table("dream_airlines_dw.dim_customer")
-        self.dim_date           = self.spark.table("dream_airlines_dw.dim_date")
-        self.fact_travel        = self.spark.table("dream_airlines_dw.fact_travel_booking")
-        self.fact_hotel         = self.spark.table("dream_airlines_dw.fact_hotel_booking")
-        self.fact_car           = self.spark.table("dream_airlines_dw.fact_car_renting")
-        self.fact_insurance     = self.spark.table("dream_airlines_dw.fact_insurance")
+    def transform(self):
+        run_date = self.params.run_date
 
         for name, df in [
             ("dim_travel_booking", self.dim_travel_booking),
@@ -178,8 +209,6 @@ class DailyBookingRevenueJobV1(SparkSessionMixin, JobBatch):
         ]:
             df.createOrReplaceTempView(name)
 
-    def transform(self):
-        run_date = self.params["run_date"]
         self.final_df = self.spark.sql(f"""
             WITH booking_revenue AS (
                 SELECT
@@ -226,13 +255,11 @@ class DailyBookingRevenueJobV1(SparkSessionMixin, JobBatch):
             ORDER BY total_revenue DESC
         """)
 
-    def load(self):
-        out = self.config.require("job.target_path") + f"/run_date={self.params['run_date']}"
-        self.final_df.write.mode("overwrite").parquet(out)
-
 # COMMAND ----------
 
-sample_date = "2016-03-15"
+# 2018-07-15 is the busiest day in the dataset: two bookings.
+sample_date = "2018-07-15"
+
 job_v1 = DailyBookingRevenueJobV1(CONFIG_PATH)
 job_v1.run(run_date=sample_date)
 display(job_v1.final_df)
@@ -244,6 +271,7 @@ display(job_v1.final_df)
 # MAGIC 1. The SQL computes `total_revenue` twice — where exactly? Why can't SQL avoid this?
 # MAGIC 2. How would you inspect the join result after the LEFT JOINs but before the GROUP BY?
 # MAGIC 3. What does `COALESCE(fi.AMT_Travel_Insurance + fi.AMT_Car_Insurance, 0)` guard against?
+
 
 # COMMAND ----------
 
@@ -259,7 +287,7 @@ display(job_v1.final_df)
 # MAGIC |---|---|
 # MAGIC | `FROM a JOIN b ON a.x = b.x` | `a.join(b, a["x"] == b["x"], "inner")` |
 # MAGIC | `LEFT JOIN b ON a.x = b.x` | `a.join(b, a["x"] == b["x"], "left")` |
-# MAGIC | `WHERE d.Date = '2016-03-15'` | `.filter(F.col("Date") == run_date)` |
+# MAGIC | `WHERE d.Date = '2018-07-15'` | `.filter(F.col("Date") == run_date)` |
 # MAGIC | `COALESCE(x, 0)` | `F.coalesce(F.col("x"), F.lit(0))` |
 # MAGIC | `COALESCE(x + y, 0)` | `F.coalesce(F.col("x") + F.col("y"), F.lit(0))` |
 # MAGIC | `GROUP BY x, y` + `SUM(col)` | `.groupBy("x","y").agg(F.sum("col").alias("..."))` |
@@ -267,25 +295,16 @@ display(job_v1.final_df)
 # MAGIC | `CASE WHEN a THEN x WHEN b THEN y ELSE z` | `F.when(a, x).when(b, y).otherwise(z)` |
 # MAGIC
 # MAGIC > **Tip:** After each TODO, uncomment the `display()` line to inspect that step.
+# MAGIC > If the job fails while you are working on it, that is expected: read the error,
+# MAGIC > fix the TODO and run the cell again.
 
 # COMMAND ----------
 
-class DailyBookingRevenueJobV2(SparkSessionMixin, JobBatch):
-    """Daily ETL — total booking revenue by agency/destination/class. DataFrame API version."""
+class DailyBookingRevenueJobV2(DailyBookingRevenueBase):
+    """DataFrame API version."""
 
-    # ── extract — do not modify ───────────────────────────────────────────────
-    def extract(self):
-        self.dim_travel_booking = self.spark.table("dream_airlines_dw.dim_travel_booking")
-        self.dim_customer       = self.spark.table("dream_airlines_dw.dim_customer")
-        self.dim_date           = self.spark.table("dream_airlines_dw.dim_date")
-        self.fact_travel        = self.spark.table("dream_airlines_dw.fact_travel_booking")
-        self.fact_hotel         = self.spark.table("dream_airlines_dw.fact_hotel_booking")
-        self.fact_car           = self.spark.table("dream_airlines_dw.fact_car_renting")
-        self.fact_insurance     = self.spark.table("dream_airlines_dw.fact_insurance")
-
-    # ── transform ─────────────────────────────────────────────────────────────
     def transform(self):
-        run_date = self.params["run_date"]
+        run_date = self.params.run_date
 
         # ── TODO 1: Join dim_travel_booking with dim_date and dim_customer ────
         # - inner join dim_date    on Booking_Date == PK_Date
@@ -344,15 +363,6 @@ class DailyBookingRevenueJobV2(SparkSessionMixin, JobBatch):
             .orderBy(F.col("total_revenue").desc())
         )
 
-    # ── load — do not modify except Task 3 ────────────────────────────────────
-    def load(self):
-        out = self.config.require("job.target_path") + f"/run_date={self.params['run_date']}"
-        self.final_df.write.mode("overwrite").parquet(out)
-        # ── TASK 3: add one more MLflow metric ────────────────────────────────
-        # record_count and the step durations are already logged for you.
-        # Ideas: total_revenue for the day, num_bookings, number of "High" tier rows
-        # self.log_metric("...", ...)
-
 # COMMAND ----------
 
 job_v2 = DailyBookingRevenueJobV2(CONFIG_PATH)
@@ -362,142 +372,41 @@ display(job_v2.final_df)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Validation — does your result match V1?
-
-# COMMAND ----------
-
-diff = (
-    job_v2.final_df.orderBy("travel_agency", "destination", "travel_class")
-    .exceptAll(job_v1.final_df.orderBy("travel_agency", "destination", "travel_class"))
-)
-
-if diff.count() == 0:
-    print("✓  DataFrame API result matches SQL result exactly.")
-else:
-    print(f"✗  {diff.count()} rows differ — check your TODOs and re-run.")
-    display(diff)
-
-# COMMAND ----------
-
-# MAGIC %md
 # MAGIC ---
-# MAGIC ## Part 3 — MLflow as a daily run tracker
-# MAGIC
-# MAGIC ### Why this matters
-# MAGIC
-# MAGIC This job runs every day. Some runs will fail — the source file didn't arrive,
-# MAGIC the cluster timed out, an upstream schema changed. Without tracking, you discover
-# MAGIC the gap days later when an analyst notices missing data in their dashboard.
-# MAGIC
-# MAGIC Because `Job.run()` opens an MLflow run for every execution, logs `run_date`
-# MAGIC as a parameter and marks the run `FAILED` when a step raises, you can query
-# MAGIC MLflow at any time to see exactly which dates succeeded and which need to be
-# MAGIC rerun. The job itself contains no tracking code.
-# MAGIC
-# MAGIC > **Nothing to fill in here — read the code and observe the output.**
+# MAGIC ## Part 3 — Validation: does your result match V1?
 
 # COMMAND ----------
 
-# The DreamAirlines dataset covers bookings from Oct 2015 to Sep 2018.
-# We simulate two weeks of daily runs in early 2016, with 3 deliberate failures.
-
-FAIL_DATES = {"2016-01-12", "2016-01-15", "2016-01-19"}
-
-
-class FlakyUpstreamJob(DailyBookingRevenueJobV2):
-    """Same job, but the source "did not arrive" on the failure dates."""
-
-    def extract(self):
-        if self.params["run_date"] in FAIL_DATES:
-            raise RuntimeError(f"Simulated upstream failure for {self.params['run_date']}")
-        super().extract()
-
-
-run_dates = [str(date(2016, 1, 10) + timedelta(days=i)) for i in range(14)]
-
-print(f"Running job for: {run_dates[0]} → {run_dates[-1]}")
-print(f"Failures injected on: {sorted(FAIL_DATES)}\n")
-
-for run_date in run_dates:
-    try:
-        FlakyUpstreamJob(CONFIG_PATH).run(run_date=run_date)
-        print(f"  ✓  {run_date}")
-    except Exception as e:
-        # Nothing to record here: Job.run() already marked the MLflow run as FAILED.
-        print(f"  ✗  {run_date}  — FAILED: {e}")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Find the gaps
-
-# COMMAND ----------
-
-runs_df = mlflow.search_runs(
-    experiment_names=[EXPERIMENT_NAME],
-    filter_string="tags.job = 'DailyBookingRevenueJob'",
-    output_format="pandas"
-)
-
-successful = set(runs_df[runs_df["status"] == "FINISHED"]["params.run_date"].dropna())
-failed     = set(runs_df[runs_df["status"] != "FINISHED"]["params.run_date"].dropna()) - successful
-
-print("=" * 50)
-print(f"  Successful : {len(successful)}  dates")
-print(f"  Failed     : {len(failed)}  dates")
-print(f"\n  Dates to rerun: {sorted(failed)}")
-print("=" * 50)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Why did a run fail?
-# MAGIC
-# MAGIC Each run keeps its error in a tag and its full log as an artifact, so the
-# MAGIC cause is one query away. No need to dig through cluster logs.
-
-# COMMAND ----------
-
-failed_runs = runs_df[runs_df["status"] == "FAILED"].sort_values("params.run_date")
-display(failed_runs[["params.run_date", "status", "tags.error"]])
-
-print(mlflow.artifacts.load_text(f"runs:/{failed_runs.iloc[0]['run_id']}/logs/run.log"))
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Backfill the missing dates
-
-# COMMAND ----------
-
-print("Backfilling failed dates...\n")
-for run_date in sorted(failed):
-    try:
-        DailyBookingRevenueJobV2(CONFIG_PATH).run(run_date=run_date)
-        print(f"  ✓  {run_date}  — backfill successful")
-    except Exception as e:
-        print(f"  ✗  {run_date}  — still failing: {e}")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Confirm no gaps remain
-
-# COMMAND ----------
-
-runs_after = mlflow.search_runs(
-    experiment_names=[EXPERIMENT_NAME],
-    filter_string="tags.job = 'DailyBookingRevenueJob' and status = 'FINISHED'",
-    output_format="pandas"
-)
-
-completed = set(runs_after["params.run_date"].dropna())
-gaps      = set(run_dates) - completed
-
-if not gaps:
-    print("✓  All dates processed — no gaps remaining.")
+if job_v2.final_df is None:
+    print("✗  V2 has not run successfully yet — complete the TODOs and run the cell above again.")
 else:
-    print(f"✗  Still missing: {sorted(gaps)}")
+    v1_rows, v2_rows = job_v1.final_df.count(), job_v2.final_df.count()
+    only_in_v2 = job_v2.final_df.exceptAll(job_v1.final_df)
+    only_in_v1 = job_v1.final_df.exceptAll(job_v2.final_df)
+
+    if v1_rows > 0 and only_in_v2.count() == 0 and only_in_v1.count() == 0:
+        print(f"✓  DataFrame API result matches SQL result exactly ({v2_rows} rows).")
+    else:
+        print(f"✗  Results differ (V1: {v1_rows} rows, V2: {v2_rows} rows) — check your TODOs and re-run.")
+        display(only_in_v2)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### What was tracked while you worked
+# MAGIC
+# MAGIC You wrote no tracking code, yet every run of both jobs was recorded, including
+# MAGIC the failed attempts. Run the cell below, then open the **Experiments** page in
+# MAGIC the left sidebar to see the same runs in the MLflow UI. Notebook `07` builds on this.
+
+# COMMAND ----------
+
+run = mlflow.get_run(job_v2.run_id)
+print("params :", run.data.params)
+print("metrics:", {name: round(value, 2) for name, value in run.data.metrics.items()})
+print("tags   :", {name: value for name, value in run.data.tags.items() if not name.startswith("mlflow.")})
+
+display(mlflow.search_runs(experiment_names=[EXPERIMENT_NAME])[["start_time", "status", "params.run_date"]])
 
 # COMMAND ----------
 
@@ -510,5 +419,5 @@ else:
 # MAGIC | Intermediate inspection | Impossible without restructuring query | `display(enriched.limit(5))` after any step |
 # MAGIC | Multiple LEFT JOINs | All in one opaque SQL block | Each join is a named, readable line |
 # MAGIC | `COALESCE` for nulls | Inside SELECT list | `.withColumn()` — explicit and testable |
-# MAGIC | Daily parameterisation | String interpolation in SQL | `run_date` read from `self.params` |
-# MAGIC | Pipeline reliability | MLflow logs every run — gaps queryable | Same: tracking comes from `Job.run()`, not from the job |
+# MAGIC | Daily parameterisation | String interpolation in SQL | `run_date` used as a typed Python value |
+# MAGIC | Tracking | Inherited from `Job.run()` | Inherited from `Job.run()` |

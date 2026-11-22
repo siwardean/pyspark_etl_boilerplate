@@ -66,7 +66,7 @@ sys.path.insert(0, str(REPO_ROOT))
 import mlflow
 from pyspark.sql import functions as F
 
-from jobs import JobConfig, JobStream, SparkSessionMixin
+from jobs import JobConfig, JobSettings, JobStream, SparkSessionMixin
 
 CONFIG_PATH = str(REPO_ROOT / "config" / "dev" / "training_stream.yaml")
 config = JobConfig(CONFIG_PATH)
@@ -122,10 +122,15 @@ reset_exercise()
 class AgencyRevenueStreamJob(SparkSessionMixin, JobStream):
     """Running number of bookings and travel revenue per agency."""
 
+    class Settings(JobSettings):
+        source_table: str
+        target_table: str
+        checkpoint_path: str
+
     # ── source — do not modify ────────────────────────────────────────────────
     def source(self):
         # readStream: an unbounded table. New rows appended to it keep flowing in.
-        self.events = self.spark.readStream.table(self.config.require("job.source_table"))
+        self.events = self.spark.readStream.table(self.settings.source_table)
         # A normal (static) DataFrame: joined to every micro-batch of the stream.
         self.agencies = self.spark.table("dream_airlines_dw.dim_travel_agency")
 
@@ -152,9 +157,9 @@ class AgencyRevenueStreamJob(SparkSessionMixin, JobStream):
             self.stream_df.writeStream
             .format("delta")
             .outputMode("complete")                  # rewrite the whole result each batch
-            .option("checkpointLocation", self.config.require("job.checkpoint_path"))
+            .option("checkpointLocation", self.settings.checkpoint_path)
             .trigger(availableNow=True)              # process what is there, then stop
-            .toTable(self.config.require("job.target_table"))
+            .toTable(self.settings.target_table)
         )
 
 # COMMAND ----------

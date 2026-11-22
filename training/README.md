@@ -114,14 +114,16 @@ flowchart LR
 | `01` | `01_data_exploration` | Profile the data — nulls, integrity, distributions | Yes |
 | `02` | `02_etl_exercise` | Build the analytics table — 4 TODOs to complete | Yes |
 | `03` | `03_etl_solution` | Full solution with design notes | Instructor only |
-| `04` | `04_dataframe_api_exercise` | Rewrite a SQL job using the DataFrame API + MLflow gap tracker | Yes |
-| `05` | `05_job_stream_exercise` | Turn the batch logic into a streaming job — 2 TODOs to complete | Yes |
-| `06` | `06_job_stream_solution` | Full streaming solution with answers to the questions | Instructor only |
+| `04` | `04_dataframe_api_exercise` | Rewrite a SQL job with the DataFrame API — 4 TODOs | Yes |
+| `05` | `05_job_stream_exercise` | Turn batch logic into a streaming job — 2 TODOs | Yes |
+| `06` | `06_job_stream_solution` | Streaming solution with answers to the questions | Instructor only |
+| `07` | `07_mlflow_exercise` | Operate a pipeline with MLflow: failures, empty runs, backfill — 5 TODOs | Yes |
+| `08` | `08_mlflow_solution` | MLflow solution with answers to the questions | Instructor only |
 
-Notebooks `04` and `05` use the class structure from the boilerplate:
+Notebooks `04`, `05` and `07` use the class structure from the boilerplate:
 
 ```python
-class YourBatchJob(SparkSessionMixin, JobBatch):       # notebook 04
+class YourBatchJob(SparkSessionMixin, JobBatch):       # notebooks 04 and 07
     def extract(self): ...      # read sources
     def transform(self): ...    # your work lives here
     def load(self): ...         # write output
@@ -132,22 +134,30 @@ class YourStreamJob(SparkSessionMixin, JobStream):     # notebook 05
     def sink(self): ...         # start writing
 ```
 
-You fill in `transform()`. There is no `run()` to write: it is inherited from
-`Job`, which opens the MLflow run, logs parameters, timings and the log file,
-and marks the run as failed if a step raises.
+There is no `run()` to write: it is inherited from `Job`, which opens the MLflow
+run, logs parameters, timings and the log file, and marks the run as failed if a
+step raises.
 
 ### Suggested 2-hour agenda
 
-| Time | Topic | Material |
-|---|---|---|
-| 0:00–0:15 | Architecture: `Job` → `JobBatch` / `JobStream`, session mixins | slides, `jobs/` |
-| 0:15–0:45 | Batch job: SQL to DataFrame API, tracking for free | notebook `04`, parts 1–2 |
-| 0:45–1:10 | MLflow: failed runs, stored logs, gap detection, backfill | notebook `04`, part 3 |
-| 1:10–1:20 | Break | |
-| 1:20–1:50 | Streaming job: source, transform, sink, checkpoint | notebook `05` |
-| 1:50–2:00 | Wrap-up: batch vs stream, Flink example walkthrough | `jobs/examples/` |
+| Time | Topic | Material | Hands-on |
+|---|---|---|---|
+| 0:00–0:15 | Architecture: `Job` → `JobBatch` / `JobStream`, session mixins, typed settings | slides, `jobs/` | demo |
+| 0:15–0:50 | Batch job: SQL to DataFrame API | notebook `04` | 4 TODOs |
+| 0:50–1:15 | Streaming job: source, transform, sink, checkpoint | notebook `05` | 2 TODOs |
+| 1:15–1:25 | Break | | |
+| 1:25–1:55 | MLflow: instrument, investigate, backfill | notebook `07` | 5 TODOs |
+| 1:55–2:00 | Wrap-up: batch vs stream, Spark vs Flink example | `jobs/examples/` | demo |
 
-Notebooks `00` to `03` are the pre-requisite material from the first session.
+That is about 90 minutes of hands-on work out of 120. Every TODO is followed by
+a ✓ / ✗ check, so trainees can tell on their own whether they are done.
+
+Notebooks `00` to `03` are not in this agenda:
+
+- `00` must be run before the session (two minutes, no exercise).
+- `01` has no exercise; it works best as pre-reading or a 10-minute demo.
+- `02` asks for the same joins, `COALESCE` and aggregation as `04`. Doing both
+  in one session is repetitive: keep `02`/`03` for a longer course or as homework.
 
 ---
 
@@ -165,15 +175,6 @@ Part of the job is finding these before you write a single transformation:
 
 ---
 
-## Notebook 04 — the MLflow tracker
-
-Once your daily job is running, notebook `04` simulates two weeks of execution
-with three injected failures, then shows how to query MLflow to find the gaps,
-read the stored log of a failed run, and rerun only the missing dates. This pattern — log every run, query for gaps,
-backfill — is the operational backbone of any reliable data pipeline.
-
----
-
 ## Notebook 05 — the streaming job
 
 The same framework runs a Spark Structured Streaming job. Bookings arrive in two
@@ -186,6 +187,17 @@ Databricks does not run Flink.
 
 ---
 
+## Notebook 07 — the MLflow exercise
+
+The closing exercise. A monthly job runs for a simulated year in which three
+months fail and one "succeeds" on an empty source. Trainees add a business
+metric to the job, then use `mlflow.search_runs` to find the failed months, read
+the stored log of a failed run, spot the empty month from its `record_count`,
+and backfill. This pattern — log every run, query for gaps, rerun — is the
+operational backbone of a reliable pipeline.
+
+---
+
 ## Configuration
 
 The notebooks read their settings from YAML files in `config/dev/`:
@@ -194,6 +206,7 @@ The notebooks read their settings from YAML files in `config/dev/`:
 |---|---|
 | `04` | `training_daily_revenue.yaml` |
 | `05`, `06` | `training_stream.yaml` |
+| `07`, `08` | `training_mlflow.yaml` |
 
 The notebooks locate the repository from their own workspace path, so there is
 nothing to adjust. MLflow runs go to one experiment per trainee, under
@@ -210,6 +223,8 @@ After completing the notebooks you will be able to:
 3. Build an analytics table by joining across a star schema
 4. Apply `COALESCE`, LEFT JOINs, and aggregation with the DataFrame API
 5. Explain why the DataFrame API is preferable to SQL for production ETL
-6. Use MLflow to track daily runs, detect gaps, and trigger backfills
+6. Use MLflow to track runs, find failed ones, read their logs, and trigger backfills
 7. Package any transformation inside a `JobBatch` for production deployment
 8. Write a `JobStream` with a source, a transformation and a sink, and explain what the checkpoint does
+9. Declare a job's settings and run parameters so that mistakes are caught before it runs
+10. Add a business metric to a job and use it to catch a run that finished without data
