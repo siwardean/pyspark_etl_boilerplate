@@ -8,8 +8,20 @@ tags: [index]
 
 # PySpark ETL Boilerplate wiki
 
-A small framework for data jobs: batch or streaming, on Spark or Flink, with
-validated YAML configuration, logging and MLflow tracking built in.
+A standard, configuration-driven framework for building data engineering
+pipelines: batch or streaming, on Spark or Flink.
+
+## Purpose
+
+- **Standardise** how pipelines are written: every job has the same steps, the
+  same entry point, and the same configuration, logging and tracking.
+- **Scale** with the number of pipelines and the size of the team: a new
+  pipeline is one class and one config file, with no new plumbing.
+- **Configure per environment**: a job holds no environment detail. One YAML
+  file per environment (`dev`, `test`, `qa`, `prod`) carries paths, cluster
+  settings and tracking targets, so the same code is promoted unchanged.
+
+## Pages
 
 | Page | What it covers |
 |---|---|

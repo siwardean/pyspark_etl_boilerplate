@@ -9,6 +9,39 @@ tags: [configuration, yaml, pydantic]
 
 One YAML file per job and environment, under `config/<env>/`.
 
+## One file per environment
+
+A job class contains no environment detail: no bucket name, no cluster size, no
+experiment name. Those live in the config file, and each environment has its
+own copy.
+
+```mermaid
+flowchart LR
+    code["One job class<br/>DailyRevenueJob"]
+    dev["config/dev/daily_revenue.yaml"]
+    test["config/test/daily_revenue.yaml"]
+    qa["config/qa/daily_revenue.yaml"]
+    prod["config/prod/daily_revenue.yaml"]
+    code --> dev --> D["local Spark · sample data · dev experiment"]
+    code --> test --> T["test cluster · test bucket"]
+    code --> qa --> Q["QA cluster · QA bucket"]
+    code --> prod --> P["production cluster · production bucket"]
+```
+
+The files have the same keys and different values. Promoting a job from one
+environment to the next changes only the `--conf` argument:
+
+```bash
+python main.py --job my_package.daily_revenue.DailyRevenueJob --conf config/dev/daily_revenue.yaml
+python main.py --job my_package.daily_revenue.DailyRevenueJob --conf config/prod/daily_revenue.yaml
+```
+
+Compare `config/dev/example.yaml` with `config/prod/example.yaml` for a concrete
+pair: the bucket, the database host, the Spark master and executor sizes, and
+the MLflow experiment differ; the job does not.
+
+## Example file
+
 ```yaml
 job:
   name: DailyRevenueJob            # optional; defaults to the class name
