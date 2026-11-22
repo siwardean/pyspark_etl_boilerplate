@@ -1,229 +1,250 @@
 # PySpark ETL Boilerplate
 
-A modular, extensible PySpark ETL framework with MLflow tracking and Cloud Object Storage support.
+A small framework for data jobs: batch or streaming, on Spark or Flink, with
+YAML configuration, logging and MLflow tracking built in.
+
+A job only contains its business steps. Everything around them (the MLflow
+run, parameters, timings, the log file, failure status) is inherited.
 
 ---
 
-## Project Structure
+## Architecture
+
+```
+Job                     config · logging · MLflow run            jobs/job.py
+├── JobBatch            extract() → transform() → load()         jobs/job_batch.py
+└── JobStream           source()  → transform() → sink()         jobs/job_stream.py
+
+SparkSessionMixin       adds self.spark                          jobs/sessions/spark.py
+FlinkSessionMixin       adds self.table_env                      jobs/sessions/flink.py
+```
+
+The **mode** (batch or stream) is chosen by inheritance, the **engine** by a
+mixin. `Job` itself has no engine, so a job that needs neither Spark nor Flink
+simply leaves the mixin out:
+
+```python
+class DailyRevenueJob(SparkSessionMixin, JobBatch): ...    # Spark batch
+class BookingStreamJob(SparkSessionMixin, JobStream): ...  # Spark Structured Streaming
+class BookingFlinkJob(FlinkSessionMixin, JobStream): ...   # Flink streaming
+class ApiExportJob(JobBatch): ...                          # plain Python
+```
+
+Sessions are lazy: nothing is imported or started until `self.spark` (or
+`self.table_env`) is first used. `SparkSessionMixin` reuses the active session
+when there is one (notebooks, Databricks) and otherwise builds one from the
+`spark` section of the config.
+
+---
+
+## Project structure
 
 ```
 pyspark_etl_boilerplate/
-├── main.py                    # Entry point — dynamically loads and runs any ETL job
-├── requirements.txt           # Python dependencies
+├── main.py                     # Entry point: runs any job by its dotted path
+├── requirements.txt            # Core dependencies
+├── requirements-flink.txt      # Only for jobs using FlinkSessionMixin
 ├── config/
-│   ├── dev/
-│   │   └── example.properties # Development configuration
-│   ├── test/
-│   │   └── example.properties # Test configuration
+│   ├── dev/                    # example.yaml, example_stream.yaml, example_flink.yaml, training_*.yaml
+│   ├── test/                   # example.yaml
 │   ├── qa/
-│   │   └── example.properties # QA configuration
 │   └── prod/
-│       └── example.properties # Production configuration
-├── etl/
-│   ├── etl_interface.py       # Abstract base class all ETL jobs must extend
-│   ├── etl_config.py          # Config loader with COS placeholder resolution
-│   └── my_etl_job.py          # Sample ETL job implementation
-├── utils/
-│   ├── args_management.py     # CLI argument parser
-│   ├── config.py              # SparkSession factory and job UID
-│   ├── date_management.py     # Date arithmetic utilities
-│   ├── file_management.py     # Parquet write helpers
-│   ├── kafka_management.py    # Optional Kafka sink
-│   └── toolbox.py             # DataFrame transformation utilities
-└── tests/
-    └── test_my_etl_job.py     # Unit tests (pytest)
+├── jobs/
+│   ├── job.py                  # Job: run() template, MLflow, logging
+│   ├── job_batch.py            # JobBatch
+│   ├── job_stream.py           # JobStream
+│   ├── config.py               # JobConfig: YAML loader with {placeholder} resolution
+│   ├── tracking.py             # The only module that talks to MLflow
+│   ├── logs.py                 # Console format and per-run log file
+│   ├── sessions/               # SparkSessionMixin, FlinkSessionMixin
+│   └── examples/               # MyBatchJob, BookingStreamJob, BookingFlinkJob
+├── utils/                      # DataFrame, date and file helpers
+├── tests/                      # pytest suite
+├── data/dreamAirlines_DW/      # Sample data used by the examples and the training
+└── training/                   # Databricks training notebooks (see training/README.md)
+```
+
+`etl/etl_interface.py` keeps the old `ETLInterface` name as a deprecated alias
+of `SparkSessionMixin + JobBatch`.
+
+---
+
+## Quick start
+
+```bash
+pip install -r requirements.txt
+
+# Batch: CSV → cleaned Parquet
+python main.py --job jobs.examples.my_batch_job.MyBatchJob --conf config/dev/example.yaml
+
+# Spark Structured Streaming: booking files → enriched Parquet
+python main.py --job jobs.examples.booking_stream_job.BookingStreamJob --conf config/dev/example_stream.yaml
+
+# Flink (pip install -r requirements-flink.txt): running revenue per agency
+python main.py --job jobs.examples.booking_flink_job.BookingFlinkJob --conf config/dev/example_flink.yaml
+
+# See the tracked runs
+mlflow ui
+```
+
+The dev examples read `data/dreamAirlines_DW/` and write to `output/`. Run
+parameters are passed with `--param`, repeatable:
+
+```bash
+python main.py --job my_package.my_module.MyJob --conf config/dev/my_job.yaml --param run_date=2016-03-15
 ```
 
 ---
 
-## ETL Execution Flow
+## Writing a job
 
-### Startup and class loading
-
-```
-spark-submit main.py --className MyETLJob --classPackage etl --confPath config/dev/example.properties
-        │
-        ▼
-AppArgsManagement           parse --className / --classPackage / --confPath
-        │
-        ▼
-importlib.import_module      dynamically import etl.myetljob
-        │
-        ▼
-cls(conf_path)               instantiate the job — triggers __init__ chain
-```
-
-### Construction (`__init__`)
-
-```
-MyETLJob(conf_path)
-        │
-        └── ETLInterface.__init__(conf_path)
-                │
-                ├── ETLConfig(conf_path)          parse .properties file
-                │       ├── read [SPARK_CONTEXT]
-                │       ├── read [COS]            store bucket placeholders
-                │       ├── read [DATABASE]       store database placeholders
-                │       ├── read [SPARK]
-                │       └── read [KAFKA]
-                │
-                └── Config.getSparkSession(config)
-                        └── iterate [SPARK_CONTEXT] key-value pairs
-                                └── builder.config(key, value) for each
-                                └── builder.getOrCreate()
-```
-
-### Run (`run`)
-
-```
-etl_instance.run()
-        │
-        ▼
-mlflow.start_run()
-        │
-        ├── log_param  env, load_type
-        │
-        ├── extract()
-        │       └── config.get("spark.targetfilepath")
-        │               └── _resolve()  →  {bucket} replaced by [COS] bucket value
-        │               └── spark.read.csv(resolved_path)
-        │
-        ├── transform()
-        │       └── drop_nulls(df)
-        │
-        ├── load()
-        │       └── final_df.write.parquet(output_path)
-        │
-        ├── log_metric  record_count
-        └── log_artifact  config file
-```
-
----
-
-## Configuration File
-
-The `.properties` file is split into four sections:
-
-```ini
-# ── Spark session properties ────────────────────────────────────────────────
-# Any valid Spark config key can be added here. All entries are applied
-# to the SparkSession builder via builder.config(key, value).
-[SPARK_CONTEXT]
-spark.app.name=MyETLJob
-spark.master=local[*]
-spark.jars=/opt/spark/jars/postgresql-42.2.jar
-spark.executor.memory=4g
-
-# ── Cloud Object Storage ─────────────────────────────────────────────────────
-# Keys defined here become placeholders usable in any other section value.
-# Example: targetfilepath={bucket}/path  →  s3://my-bucket/path at runtime
-[COS]
-bucket=s3://my-data-bucket
-
-# ── Database ──────────────────────────────────────────────────────────────────
-# Keys defined here become placeholders usable in any other section value.
-# Example: url=jdbc:postgresql://{host}:{port}/{dbname}
-[DATABASE]
-host=localhost
-port=5432
-dbname=my_database
-
-# ── Job parameters ──────────────────────────────────────────────────────────
-[SPARK]
-env=dev
-targetstorage=cos
-targetfilepath={bucket}/input/data.csv
-loadMethod=full
-ispartitioned=true
-partitioncolumnlist=country,year
-
-# ── Kafka (optional) ─────────────────────────────────────────────────────────
-[KAFKA]
-insertintokafka=false
-```
-
----
-
-## Implementing a New ETL Job
-
-Extend `ETLInterface` and implement the three abstract methods, then override `run()` to add MLflow tracking:
+### Batch
 
 ```python
-from etl.etl_interface import ETLInterface
-from utils.toolbox import drop_nulls
-import mlflow
+from jobs import JobBatch, SparkSessionMixin
 
 
-class MyNewJob(ETLInterface):
+class DailyRevenueJob(SparkSessionMixin, JobBatch):
     def extract(self):
-        path = self.config.get("spark.targetfilepath")  # {bucket} resolved automatically
-        self.df = self.spark.read.parquet(path)
+        self.df = self.spark.read.parquet(self.config.require("job.source_path"))
 
     def transform(self):
-        self.final_df = drop_nulls(self.df)
+        run_date = self.params["run_date"]              # from job.run(run_date=...)
+        self.final_df = self.df.filter(self.df["date"] == run_date)
 
     def load(self):
-        out = self.config.get("spark.targetfilepath") + "_output"
-        self.final_df.write.mode("overwrite").parquet(out)
+        self.final_df.write.mode("overwrite").parquet(self.config.require("job.target_path"))
+        self.log_metric("days_processed", 1)            # optional custom metric
 
-    def run(self):
-        with mlflow.start_run():
-            mlflow.set_tag("job", "MyNewJob")
-            mlflow.log_param("env", self.config.get("spark.env"))
-            mlflow.log_param("load_type", self.config.get("spark.loadMethod"))
-            self.extract()
-            self.transform()
-            self.load()
-            mlflow.log_metric("record_count", self.final_df.count())
-            mlflow.log_artifact(self.config_path)
+
+DailyRevenueJob("config/dev/daily_revenue.yaml").run(run_date="2016-03-15")
 ```
 
-Run it without changing `main.py`:
+### Stream
 
-```bash
-spark-submit main.py \
-  --className MyNewJob \
-  --classPackage etl \
-  --confPath config/dev/example.properties
+```python
+from jobs import JobStream, SparkSessionMixin
+
+
+class BookingStreamJob(SparkSessionMixin, JobStream):
+    def source(self):
+        self.events = self.spark.readStream.table(self.config.require("job.source_table"))
+
+    def transform(self):
+        self.stream_df = self.events.filter("AMT_Travel IS NOT NULL")
+
+    def sink(self):
+        return (self.stream_df.writeStream
+                .option("checkpointLocation", self.config.require("job.checkpoint_path"))
+                .trigger(availableNow=True)
+                .toTable(self.config.require("job.target_table")))
 ```
+
+`source()`, `transform()` and `sink()` only describe the pipeline. `sink()`
+starts it and returns the running handle; `JobStream` then waits on it, logging
+each micro-batch, until the stream ends or `job.stream_timeout_seconds` elapses.
+
+### What every step can use
+
+| Inside a step | What it gives you |
+|---|---|
+| `self.config.get("section.key", default)` | a config value, with its YAML type |
+| `self.config.require("section.key")` | same, but fails clearly when the key is missing |
+| `self.params["name"]` | what was passed to `job.run(name=...)` |
+| `self.logger` | a standard Python logger, stored with the run |
+| `self.log_metric(key, value)` / `self.set_tag(key, value)` | tracking on the current MLflow run |
+| `self.spark` / `self.table_env` | the engine session, when the mixin is used |
 
 ---
 
-## MLflow Tracking
+## Configuration
 
-Every run logs the following to the configured MLflow tracking server:
+One YAML file per job and environment. Values keep their type (booleans,
+numbers, lists), and are addressed as `section.key`.
+
+```yaml
+job:
+  name: DailyRevenueJob            # optional; defaults to the class name
+  env: dev
+  source_path: "{bucket}/bookings"
+  target_path: "{bucket}/daily_revenue"
+  partition_by: [country, year]
+  # stream_timeout_seconds: 60     # JobStream only: stop after this long
+
+# Keys in `storage` and `database` can be used as {placeholders} in any value.
+storage:
+  bucket: s3://my-data-bucket
+
+database:
+  host: localhost
+  port: 5432
+  dbname: my_database
+
+# Passed as-is to the SparkSession builder.
+spark:
+  spark.app.name: DailyRevenueJob
+  spark.master: "local[*]"
+  spark.sql.shuffle.partitions: 8
+
+# Passed as-is to the Flink TableEnvironment (FlinkSessionMixin only).
+flink:
+  parallelism.default: 1
+
+mlflow:
+  enabled: true                    # false turns tracking off without touching the job
+  experiment: DailyRevenueJob-dev
+  tags: {team: data-eng}           # optional, added to every run
+
+logging:
+  level: INFO
+```
+
+A missing file, invalid YAML or a missing required key raises `ConfigError`
+with the file and key name. Credentials do not belong in these files: the MLflow
+server is taken from the `MLFLOW_TRACKING_URI` environment variable (already set
+on Databricks; a local `./mlruns` store is used when it is absent).
+
+Where a Spark session already exists, cluster-level settings such as
+`spark.master` are ignored and only runtime settings are applied.
+
+---
+
+## What is tracked
+
+`Job.run()` records every execution as one MLflow run:
 
 | Type | Key | Value |
-|------|-----|-------|
-| Tag | `job` | class name |
-| Param | `env` | value of `spark.env` |
-| Param | `load_type` | value of `spark.loadMethod` |
-| Metric | `record_count` | number of rows written |
-| Artifact | — | the `.properties` config file |
+|---|---|---|
+| Tag | `job`, `mode`, `engine` | job name, `batch` / `stream`, `spark` / `flink` / `python` |
+| Tag | `error` | exception type and message, on failed runs |
+| Param | `env` | `job.env` |
+| Param | *run parameters* | everything passed to `run(**params)` |
+| Metric | `duration_seconds` | total run time |
+| Metric | `<step>_seconds` | time spent in each step |
+| Metric | `record_count` | rows produced (batch) or read (stream) |
+| Metric | `batch_input_rows`, `batch_count` | per micro-batch, Spark streaming only |
+| Artifact | `config/` | the config file used |
+| Artifact | `logs/run.log` | everything the job logged during the run |
 
-Set the tracking URI before running:
+A step that raises marks the run `FAILED`, stores the traceback in the log
+artifact and re-raises. Querying MLflow by `params.run_date` and `status` is
+therefore enough to find gaps and backfill them (see training notebook 04).
 
-```bash
-export MLFLOW_TRACKING_URI=http://your-mlflow-server:5000
-```
+Two limits: the log artifact contains the Python driver logs only, not Spark
+executor or JVM logs, and it is uploaded when the run ends, so a long-running
+stream is monitored live through the platform's own logs.
+
+Because Spark is lazy, `extract_seconds` and `transform_seconds` are usually
+close to zero: the work happens in `load()`. Counting rows runs the query once
+more; set `track_record_count = False` on a job where that is too expensive.
 
 ---
 
-## Running Tests
+## Running tests
 
 ```bash
 pip install -r requirements.txt
 pytest tests/
 ```
 
----
-
-## Requirements
-
-```
-pyspark
-mlflow
-kafka-python
-boto3
-pytest
-```
+The Spark tests need Java; the Flink test is skipped unless PyFlink is installed.

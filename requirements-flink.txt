@@ -1,0 +1,2 @@
+# Only needed for jobs that use FlinkSessionMixin (a large install, so kept optional).
+apache-flink>=1.18

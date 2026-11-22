@@ -1,0 +1,27 @@
+job:
+  env: test
+  load_method: full
+  source_path: "{bucket}/input/data.csv"
+  target_path: "{bucket}/output/data_clean"
+  partition_by: [country, year]
+
+# Keys in `storage` and `database` can be used as {placeholders} in any value.
+storage:
+  bucket: s3://my-data-bucket-test
+
+database:
+  host: test-db-host
+  port: 5432
+  dbname: my_database_test
+
+spark:
+  spark.app.name: MyBatchJob-test
+  spark.master: "local[*]"
+  spark.jars: /opt/spark/jars/postgresql-42.2.jar
+
+mlflow:
+  enabled: true
+  experiment: MyBatchJob-test
+
+logging:
+  level: INFO

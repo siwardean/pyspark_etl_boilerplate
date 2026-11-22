@@ -1,0 +1,33 @@
+# Batch example, runnable locally from the repo root:
+#   python main.py --job jobs.examples.my_batch_job.MyBatchJob --conf config/dev/example.yaml
+
+job:
+  env: dev
+  load_method: full
+  source_path: "{bucket}/dreamAirlines_DW/factTravelBooking.csv"
+  target_path: "{output}/fact_travel_booking_clean"
+  partition_by: [FK_TravelAgency]
+
+# Keys in `storage` and `database` can be used as {placeholders} in any value.
+storage:
+  bucket: data
+  output: output
+
+database:
+  host: localhost
+  port: 5432
+  dbname: my_database
+
+# Passed as-is to the SparkSession builder. Ignored where a session already
+# exists (Databricks), except for settings Spark allows changing at runtime.
+spark:
+  spark.app.name: MyBatchJob
+  spark.master: "local[*]"
+  spark.sql.shuffle.partitions: 4
+
+mlflow:
+  enabled: true
+  experiment: MyBatchJob-dev
+
+logging:
+  level: INFO

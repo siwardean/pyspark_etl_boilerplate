@@ -1,0 +1,21 @@
+# PyFlink example (pip install -r requirements-flink.txt), from the repo root:
+#   python main.py --job jobs.examples.booking_flink_job.BookingFlinkJob --conf config/dev/example_flink.yaml
+
+job:
+  env: dev
+  source_path: "{bucket}/dreamAirlines_DW/factTravelBooking.csv"
+
+storage:
+  bucket: data
+
+# Passed as-is to the Flink TableEnvironment.
+flink:
+  pipeline.name: BookingFlinkJob
+  parallelism.default: 1
+
+mlflow:
+  enabled: true
+  experiment: BookingFlinkJob-dev
+
+logging:
+  level: INFO

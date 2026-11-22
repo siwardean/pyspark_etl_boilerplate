@@ -1,0 +1,26 @@
+# Spark Structured Streaming example, runnable locally from the repo root:
+#   python main.py --job jobs.examples.booking_stream_job.BookingStreamJob --conf config/dev/example_stream.yaml
+
+job:
+  env: dev
+  source_path: "{bucket}/dreamAirlines_DW"
+  source_files: "factTravelBooking*.csv"
+  agency_path: "{bucket}/dreamAirlines_DW/dimTravelAgency.csv"
+  target_path: "{output}/booking_stream"
+  # stream_timeout_seconds: 60     # stop a never-ending stream after this long
+
+storage:
+  bucket: data
+  output: output
+
+spark:
+  spark.app.name: BookingStreamJob
+  spark.master: "local[*]"
+  spark.sql.shuffle.partitions: 4
+
+mlflow:
+  enabled: true
+  experiment: BookingStreamJob-dev
+
+logging:
+  level: INFO

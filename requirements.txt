@@ -1,5 +1,4 @@
-pyspark
-mlflow
-kafka-python
-boto3
-pytest
+pyspark>=3.5
+mlflow>=2.9
+PyYAML>=6.0
+pytest>=8.0
