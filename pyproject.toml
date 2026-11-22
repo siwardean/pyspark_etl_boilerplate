@@ -1,6 +1,10 @@
 [tool.ruff]
 line-length = 110
 target-version = "py310"
+# The Databricks notebooks are not checked: they rely on runtime globals
+# (spark, dbutils, display) and are laid out by hand for trainees.
+extend-exclude = ["training/[0-9][0-9]_*.py"]
+force-exclude = true
 
 [tool.ruff.lint]
 # E/W: pycodestyle, F: pyflakes, I: import order, B: likely bugs, UP: outdated syntax
@@ -10,17 +14,13 @@ select = ["E", "W", "F", "I", "B", "UP"]
 known-first-party = ["jobs", "utils", "etl"]
 
 [tool.ruff.lint.per-file-ignores]
-# Databricks notebooks: `spark`, `dbutils` and `display` are provided by the
-# runtime, imports follow the setup cell, and tables are aligned by hand.
-# Exercise notebooks also keep imports and variables the trainee will need.
-"training/0*.py" = ["F821", "F401", "F841", "E402", "E501", "E221", "E241", "E272", "I001"]
 "training/generate_slides.py" = ["E501", "F401", "F811", "F841", "B007", "B905"]
 # Engine imports come after pytest.importorskip() on purpose.
 "tests/*.py" = ["E402"]
 
 [tool.ruff.format]
-# Notebook code and README snippets are aligned by hand; leave them as written.
-exclude = ["training/*.py", "*.md"]
+# README snippets and the slide generator are laid out by hand; leave them as written.
+exclude = ["*.md", "training/generate_slides.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

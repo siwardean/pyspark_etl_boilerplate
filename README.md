@@ -311,7 +311,7 @@ pytest tests/
 The pre-commit hooks lint and format with [ruff](https://docs.astral.sh/ruff/)
 (configured in `pyproject.toml`) and run basic file checks (YAML and TOML
 syntax, trailing whitespace, merge-conflict markers, large files). The training
-notebooks are linted but not reformatted.
+notebooks, the sample data and the slide deck are skipped.
 
 The Spark tests need Java; the Flink tests are skipped unless PyFlink is
 installed (`pip install -r requirements-flink.txt`).
