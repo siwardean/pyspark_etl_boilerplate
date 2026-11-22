@@ -1,4 +1,5 @@
 """The Spark session mixin and the example jobs, on a local Spark session."""
+
 import shutil
 from pathlib import Path
 
@@ -47,21 +48,25 @@ def test_spark_conf_comes_from_config_as_strings():
 
 def test_batch_job_writes_parquet_and_tracks_the_run(tmp_path, last_run):
     target = tmp_path / "clean"
-    job = MyBatchJob({
-        "job": {
-            "env": "test",
-            "source_path": str(DATA / "factTravelBooking.csv"),
-            "target_path": str(target),
-            "partition_by": ["FK_TravelAgency"],
-        },
-        "spark": SPARK_CONF,
-        "mlflow": {"experiment": "spark-batch"},
-    }).run()
+    job = MyBatchJob(
+        {
+            "job": {
+                "env": "test",
+                "source_path": str(DATA / "factTravelBooking.csv"),
+                "target_path": str(target),
+                "partition_by": ["FK_TravelAgency"],
+            },
+            "spark": SPARK_CONF,
+            "mlflow": {"experiment": "spark-batch"},
+        }
+    ).run()
 
     assert job.spark.conf.get("spark.sql.shuffle.partitions") == "2"
     assert job.spark.read.parquet(str(target)).count() == 99
     assert sorted(p.name for p in target.glob("FK_TravelAgency=*")) == [
-        "FK_TravelAgency=1", "FK_TravelAgency=2", "FK_TravelAgency=3",
+        "FK_TravelAgency=1",
+        "FK_TravelAgency=2",
+        "FK_TravelAgency=3",
     ]
     run = last_run("spark-batch")
     assert run.info.status == "FINISHED"
@@ -112,10 +117,12 @@ def test_active_session_is_reused_and_gets_runtime_settings_only():
         def load(self): ...
 
     active = pyspark.sql.SparkSession.builder.config("spark.master", "local[2]").getOrCreate()
-    job = AnyJob({
-        "spark": {"spark.master": "yarn", "spark.sql.shuffle.partitions": 7},
-        "mlflow": {"enabled": False},
-    })
+    job = AnyJob(
+        {
+            "spark": {"spark.master": "yarn", "spark.sql.shuffle.partitions": 7},
+            "mlflow": {"enabled": False},
+        }
+    )
 
     assert job.spark is active
     assert active.conf.get("spark.sql.shuffle.partitions") == "7"

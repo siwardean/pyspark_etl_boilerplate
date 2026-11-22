@@ -1,4 +1,5 @@
 """Base class shared by every job, whatever its mode or engine."""
+
 import time
 from abc import ABC, abstractmethod
 

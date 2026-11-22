@@ -17,8 +17,10 @@ def mlflow_store(tmp_path, monkeypatch):
 @pytest.fixture
 def last_run():
     """Return the most recent MLflow run of an experiment."""
+
     def _last_run(experiment):
         runs = mlflow.search_runs(experiment_names=[experiment], output_format="list")
         assert runs, f"no MLflow run recorded in experiment {experiment!r}"
         return runs[0]
+
     return _last_run

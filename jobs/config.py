@@ -1,4 +1,5 @@
 """YAML job configuration."""
+
 import re
 from pathlib import Path
 
@@ -17,8 +18,8 @@ class JobConfig:
     """Read-only view over a YAML config file (or a plain dict).
 
     ``load()`` validates a whole section into a typed settings model; ``get()``
-    reads a single value addressed as ``"section.key"``. Scalars declared in ``PLACEHOLDER_SECTIONS`` can be referenced from any
-    string value as ``{key}``::
+    reads a single value addressed as ``"section.key"``. Scalars declared in
+    ``PLACEHOLDER_SECTIONS`` can be referenced from any string value as ``{key}``::
 
         storage:
           bucket: s3://my-data-bucket

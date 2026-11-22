@@ -201,7 +201,7 @@ dfDimTravelBooking
    .withColumn("RankPerc", percent_rank().over(windowTravel))
     .where($"Rank" <= 3)
      )
-    
+
 
 // COMMAND ----------
 
@@ -230,7 +230,7 @@ dfFactInsurance
   .join(dfDimEmployee, $"FK_Employee" === $"PK_Employee")
   .groupBy("DSC_Employee")
   .agg(round(sum("AMT_Travel_Insurance"),2).as("Amt_Insurance"))
-  
+
   .select("DSC_Employee","Amt_Insurance")
   .orderBy($"Amt_Insurance".desc)
 )
@@ -303,9 +303,9 @@ dfFactTravelBooking.groupBy("FK_Employee")
   .withColumn("TOP",rank.over(windowEmpTOP))
   .withColumn("BOT",rank.over(windowEmpBOT))
   .select("DSC_Employee","Seniority","PercentTotal","SUM_AMT_Travel","Total")
-  
+
   .orderBy($"PercentTotal".desc)
-  
+
 )
 
 // COMMAND ----------
@@ -411,7 +411,7 @@ def squareT(num:Int):Int={
      return num/2
   }else{
     return num*num
-  }  
+  }
 }
 val squareTval = squareT(_:Int):Int
 val squareTUDF = udf(squareT(_:Int):Int)
@@ -674,5 +674,3 @@ println(split_df(1).count)
 df.show
 
 // COMMAND ----------
-
-

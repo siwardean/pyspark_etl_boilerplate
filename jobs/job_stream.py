@@ -1,4 +1,5 @@
 """Unbounded jobs: source, transform, sink, then run until stopped."""
+
 from abc import abstractmethod
 
 from jobs.job import Job

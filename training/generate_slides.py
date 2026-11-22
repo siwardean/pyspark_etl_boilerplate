@@ -2,12 +2,12 @@
 Generate training/slides.pptx — DreamAirlines Data Engineering Training.
 Run:  python training/generate_slides.py
 """
+import copy
+
 from pptx import Presentation
-from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
-from pptx.util import Inches, Pt
-import copy
+from pptx.util import Emu, Inches, Pt
 
 # ── palette ──────────────────────────────────────────────────────────────────
 PURPLE       = RGBColor(0x6D, 0x28, 0xD9)
@@ -70,9 +70,9 @@ def add_textbox(slide, left, top, width, height,
     run.font.color.rgb = color
     run.font.name    = font_name
     if line_spacing:
-        from pptx.util import Pt as _Pt
-        from pptx.oxml.ns import qn
         import lxml.etree as etree
+        from pptx.oxml.ns import qn
+        from pptx.util import Pt as _Pt
         pPr = p._p.get_or_add_pPr()
         lnSpc = etree.SubElement(pPr, qn('a:lnSpc'))
         spcPts = etree.SubElement(lnSpc, qn('a:spcPts'))
@@ -94,8 +94,8 @@ def add_multiline_textbox(slide, left, top, width, height,
         else:
             p = tf.add_paragraph()
         if line_spacing_pt:
-            from pptx.oxml.ns import qn
             import lxml.etree as etree
+            from pptx.oxml.ns import qn
             pPr = p._p.get_or_add_pPr()
             lnSpc = etree.SubElement(pPr, qn('a:lnSpc'))
             spcPts = etree.SubElement(lnSpc, qn('a:spcPts'))

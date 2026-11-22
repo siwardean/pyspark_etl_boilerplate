@@ -1,4 +1,5 @@
 """Run any job: python main.py --job package.module.ClassName --conf path/to/config.yaml"""
+
 import argparse
 import importlib
 
@@ -8,7 +9,10 @@ def parse_args(argv=None):
     parser.add_argument("--job", required=True, help="e.g. jobs.examples.my_batch_job.MyBatchJob")
     parser.add_argument("--conf", required=True, help="path to the YAML config file")
     parser.add_argument(
-        "--param", action="append", default=[], metavar="KEY=VALUE",
+        "--param",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
         help="run parameter, repeatable (e.g. --param run_date=2016-03-15)",
     )
     args = parser.parse_args(argv)

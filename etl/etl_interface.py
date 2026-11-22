@@ -1,4 +1,5 @@
 """Deprecated name kept so older notebooks still import. Use ``jobs`` instead."""
+
 import warnings
 
 from jobs import JobBatch, SparkSessionMixin

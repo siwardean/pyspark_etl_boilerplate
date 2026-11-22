@@ -1,4 +1,5 @@
 """Bounded jobs: extract, transform, load, then stop."""
+
 from abc import abstractmethod
 
 from jobs.job import Job

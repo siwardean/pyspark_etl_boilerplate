@@ -1,5 +1,6 @@
 """Typed, validated settings. Each model maps to one section of the YAML config."""
-from typing import Literal, Optional
+
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -24,9 +25,11 @@ class JobSettings(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    name: Optional[str] = Field(None, description="Job name used in logs and MLflow; defaults to the class name.")
+    name: str | None = Field(
+        None, description="Job name used in logs and MLflow; defaults to the class name."
+    )
     env: str = Field("dev", description="Environment the job runs in (dev, test, qa, prod).")
-    stream_timeout_seconds: Optional[float] = Field(
+    stream_timeout_seconds: float | None = Field(
         None, gt=0, description="JobStream only: stop the stream after this many seconds."
     )
 
@@ -55,8 +58,8 @@ class MlflowSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = Field(True, description="Set to false to run without tracking.")
-    experiment: Optional[str] = Field(None, description="Experiment the runs are filed under.")
-    tracking_uri: Optional[str] = Field(
+    experiment: str | None = Field(None, description="Experiment the runs are filed under.")
+    tracking_uri: str | None = Field(
         None, description="MLflow server; normally left to MLFLOW_TRACKING_URI or the platform."
     )
     tags: dict[str, str] = Field(default_factory=dict, description="Extra tags added to every run.")

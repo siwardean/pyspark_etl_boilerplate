@@ -1,4 +1,5 @@
 """The sample CSV files must stay well-formed: UTF-8, one value per column."""
+
 import csv
 from pathlib import Path
 

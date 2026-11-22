@@ -25,7 +25,7 @@ dfDimCar.select($"Update_Date",unix_timestamp($"Update_Date").as("TimeStamp"))
 
 // COMMAND ----------
 
-//ex2 
+//ex2
 val splitDf = dfDimCar.randomSplit(Array(0.8,0.2))
 println(splitDf(0).count)
 println(splitDf(1).count)
@@ -99,7 +99,7 @@ val df_json_2 = spark.read.schema(newSchemaJSON).json("/FileStore/tables/test.js
 //ex9
 def myFunct(input:Int):Int = {
   input * input
-} 
+}
 // Convert to UDF in scala
 val myFunctUDF = udf(myFunct(_:Int):Int)
 
@@ -120,11 +120,11 @@ dfDimEmployee.select($"DSC_Employee")
 
 // COMMAND ----------
 
-//ex 11 
+//ex 11
 
 import org.apache.spark.sql.expressions.Window
 val windowCarRent = Window.partitionBy("FK_TravelAgency")
-  
+
 dfFactCarRenting.na.drop()
   .withColumn("MeanByComp_CatInsurance", mean("AMT_CarInsurance").over(windowCarRent))
   .groupBy("MeanByComp_CatInsurance","FK_TravelAgency","FK_Employee")

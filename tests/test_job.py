@@ -1,10 +1,10 @@
 """The run() template, tested with plain-Python jobs: no engine involved."""
+
 from datetime import date
 from pathlib import Path
 
 import mlflow
 import pytest
-
 from pydantic import ValidationError
 
 from jobs import ConfigError, JobBatch, JobParams, JobSettings, JobStream
@@ -57,7 +57,9 @@ def test_successful_run_is_tracked(last_run):
     assert job.params.size == 4
     assert run.data.metrics["record_count"] == 4
     assert run.data.metrics["total"] == 12
-    assert {"duration_seconds", "extract_seconds", "transform_seconds", "load_seconds"} <= set(run.data.metrics)
+    assert {"duration_seconds", "extract_seconds", "transform_seconds", "load_seconds"} <= set(
+        run.data.metrics
+    )
 
 
 def test_run_log_and_config_are_stored_with_the_run(last_run):

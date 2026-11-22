@@ -5,11 +5,12 @@ and the transformation, written in SQL that both engines understand. Each
 engine then adds a thin subclass with its own ``source()`` and ``sink()``,
 because connectors are engine-specific.
 
-Run either one with ``--job``::
+Run either one with ``--job``, using ``--conf config/dev/example_stream.yaml``::
 
-    python main.py --job jobs.examples.booking_stream_job.BookingSparkStreamJob --conf config/dev/example_stream.yaml
-    python main.py --job jobs.examples.booking_stream_job.BookingFlinkStreamJob --conf config/dev/example_stream.yaml
+    python main.py --job jobs.examples.booking_stream_job.BookingSparkStreamJob --conf ...
+    python main.py --job jobs.examples.booking_stream_job.BookingFlinkStreamJob --conf ...
 """
+
 import os
 
 from jobs import FlinkSessionMixin, JobSettings, JobStream, SparkSessionMixin
@@ -33,8 +34,8 @@ class BookingStreamJob(JobStream):
     """Engine-neutral part: reads the ``bookings`` stream, keeps the valid rows."""
 
     class Settings(JobSettings):
-        source_path: str   # landing directory of booking CSV files
-        target_path: str   # output directory
+        source_path: str  # landing directory of booking CSV files
+        target_path: str  # output directory
 
     def transform(self):
         # self.sql() exists on both session mixins, so this line runs on either engine.
@@ -46,7 +47,8 @@ class BookingSparkStreamJob(SparkSessionMixin, BookingStreamJob):
 
     def source(self):
         bookings = (
-            self.spark.readStream.schema(BOOKING_COLUMNS).option("header", "true")
+            self.spark.readStream.schema(BOOKING_COLUMNS)
+            .option("header", "true")
             .csv(self.settings.source_path)
         )
         bookings.createOrReplaceTempView("bookings")
@@ -54,11 +56,10 @@ class BookingSparkStreamJob(SparkSessionMixin, BookingStreamJob):
     def sink(self):
         target = self.settings.target_path
         return (
-            self.stream_df.writeStream
-            .format("parquet")
+            self.stream_df.writeStream.format("parquet")
             .outputMode("append")
             .option("checkpointLocation", f"{target}/_checkpoint")
-            .trigger(availableNow=True)   # process what is there, then stop
+            .trigger(availableNow=True)  # process what is there, then stop
             .start(target)
         )
 

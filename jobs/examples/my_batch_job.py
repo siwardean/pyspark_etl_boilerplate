@@ -1,4 +1,5 @@
 """Minimal batch job: CSV in, cleaned Parquet out."""
+
 from jobs import JobBatch, JobSettings, SparkSessionMixin
 from utils.file_management import save_as_parquet
 from utils.toolbox import drop_nulls
@@ -12,7 +13,8 @@ class MyBatchJob(SparkSessionMixin, JobBatch):
 
     def extract(self):
         self.df = (
-            self.spark.read.option("header", "true").option("inferSchema", "true")
+            self.spark.read.option("header", "true")
+            .option("inferSchema", "true")
             .csv(self.settings.source_path)
         )
 

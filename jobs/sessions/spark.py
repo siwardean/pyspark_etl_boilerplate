@@ -1,4 +1,5 @@
 """Spark session for jobs that need one."""
+
 from time import monotonic as _now
 
 

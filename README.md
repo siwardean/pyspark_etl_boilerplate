@@ -299,11 +299,23 @@ more; set `track_record_count = False` on a job where that is too expensive.
 
 ---
 
-## Running tests
+## Development
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt pre-commit
+pre-commit install          # run the checks on every commit
+pre-commit run --all-files  # run them on everything now
 pytest tests/
 ```
 
-The Spark tests need Java; the Flink tests are skipped unless PyFlink is installed.
+The pre-commit hooks lint and format with [ruff](https://docs.astral.sh/ruff/)
+(configured in `pyproject.toml`) and run basic file checks (YAML and TOML
+syntax, trailing whitespace, merge-conflict markers, large files). The training
+notebooks are linted but not reformatted.
+
+The Spark tests need Java; the Flink tests are skipped unless PyFlink is
+installed (`pip install -r requirements-flink.txt`).
+
+CI (`.github/workflows/ci.yml`) runs on every pull request and on pushes to
+`main`, in two stages: the pre-commit hooks, then the pytest suite including the
+Flink tests.
