@@ -2,7 +2,7 @@
 name = "pyspark-etl-boilerplate"
 # The single source of truth for the version. Every merge to main is released
 # as v<version>, so each pull request must bump it.
-version = "0.1.1"
+version = "0.1.2"
 description = "A standard, configuration-driven framework for data engineering pipelines: batch and streaming jobs on Spark or Flink, with per-environment config, logging and MLflow tracking built in."
 readme = "README.md"
 requires-python = ">=3.10,<3.13"

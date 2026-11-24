@@ -44,6 +44,10 @@ class JobStream(Job):
         self._run_step(self.source)
         self._run_step(self.transform)
         self.handle = self._run_step(self.sink)
+        if self.handle is None:
+            raise ValueError(
+                f"{type(self).__name__}.sink() returned None: it must start the stream and return its handle"
+            )
         self.logger.info("stream: running")
         self._await_stream(self.handle, self.settings.stream_timeout_seconds)
         self.logger.info("stream: stopped")

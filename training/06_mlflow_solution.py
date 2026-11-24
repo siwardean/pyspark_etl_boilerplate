@@ -3,37 +3,9 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC # 07 — MLflow exercise: operate a pipeline you can trust
-# MAGIC ### Monthly agency revenue — DreamAirlines
+# MAGIC # 06 — Solution: MLflow exercise
 # MAGIC
-# MAGIC ---
-# MAGIC
-# MAGIC In notebooks `04` and `05` MLflow recorded every run without you asking. This
-# MAGIC final exercise is about **using** those records, the way you would on call.
-# MAGIC
-# MAGIC ## What `Job.run()` logs for every run
-# MAGIC
-# MAGIC | Type | Key | Example |
-# MAGIC |---|---|---|
-# MAGIC | Tag | `job`, `mode`, `engine` | `MonthlyAgencyRevenueJob`, `batch`, `spark` |
-# MAGIC | Tag | `error` | `RuntimeError: ...` (failed runs only) |
-# MAGIC | Param | run parameters | `month = 2017-06` |
-# MAGIC | Metric | `record_count`, `duration_seconds`, `<step>_seconds` | `3`, `4.2` |
-# MAGIC | Artifact | `config/`, `logs/run.log` | the YAML used, the full log |
-# MAGIC
-# MAGIC ## Your tasks
-# MAGIC
-# MAGIC | Task | What you do |
-# MAGIC |---|---|
-# MAGIC | 1 | Add a business metric to the job |
-# MAGIC | 2 | Find the months that failed |
-# MAGIC | 3 | Read the stored log of a failed run |
-# MAGIC | 4 | Find the month that "succeeded" with no data |
-# MAGIC | 5 | Backfill, and confirm the year is complete |
-# MAGIC
-# MAGIC Each TODO is one to three lines, and is followed by a ✓ / ✗ check.
-# MAGIC
-# MAGIC > **Pre-requisite:** Run `00_setup_data` first.
+# MAGIC **Instructor only.** Completed version of notebook `05`.
 
 # COMMAND ----------
 
@@ -74,9 +46,8 @@ spark.sql("CREATE SCHEMA IF NOT EXISTS analytics")
 # MAGIC ---
 # MAGIC ## Part 1 — Instrument the job
 # MAGIC
-# MAGIC The job below computes travel revenue per agency for one month. It is complete
-# MAGIC and already tracked. **TODO 1** (at the end of `load()`): log one more metric,
-# MAGIC the month's total revenue.
+# MAGIC TODO 1 adds two lines at the end of `load()`. A metric logged inside a step is
+# MAGIC attached to the run that `Job.run()` opened; the job never imports `mlflow`.
 
 # COMMAND ----------
 
@@ -112,12 +83,9 @@ class MonthlyAgencyRevenueJob(SparkSessionMixin, JobBatch):
             .option("replaceWhere", f"month = '{self.params.month}'")   # replace this month only
             .saveAsTable(self.settings.target_table))
 
-        # ── TODO 1: log the month's total revenue as an MLflow metric ─────────
-        # The framework already logs record_count and the step durations.
-        # Add a business metric named "total_revenue":
-        #   total = self.final_df.agg(F.sum("travel_revenue")).first()[0] or 0
-        #   self.log_metric("total_revenue", total)
-        #
+        # ── TODO 1 (solution) ─────────────────────────────────────────────────
+        total = self.final_df.agg(F.sum("travel_revenue")).first()[0] or 0
+        self.log_metric("total_revenue", total)
 
 # COMMAND ----------
 
@@ -207,11 +175,8 @@ display(runs[["params.month", "status", "metrics.record_count", "metrics.total_r
 
 # COMMAND ----------
 
-# ── TODO 2: which months failed? ─────────────────────────────────────────────
-# Build a set of the `params.month` values of the runs whose `status` is "FAILED".
-# Hint: runs[runs["status"] == "FAILED"]["params.month"]
-#
-failed_months = set()   # ← replace this line
+# ── TODO 2 (solution) ────────────────────────────────────────────────────────
+failed_months = set(runs[runs["status"] == "FAILED"]["params.month"])
 
 print("Failed months:", sorted(failed_months))
 print("✓  Correct." if failed_months == _FAILED else "✗  Not yet — three months failed.")
@@ -230,11 +195,8 @@ failed_run = runs[runs["status"] == "FAILED"].iloc[0]
 print("month:", failed_run["params.month"])
 print("error:", failed_run["tags.error"])
 
-# ── TODO 3: read the log stored with that run ────────────────────────────────
-# Every run keeps its log as an artifact at logs/run.log.
-# Hint: mlflow.artifacts.load_text(f"runs:/{failed_run['run_id']}/logs/run.log")
-#
-log_text = ""   # ← replace this line
+# ── TODO 3 (solution) ────────────────────────────────────────────────────────
+log_text = mlflow.artifacts.load_text(f"runs:/{failed_run['run_id']}/logs/run.log")
 
 print(log_text)
 print("✓  You found the traceback." if "Traceback" in log_text else "✗  Not yet — log_text is empty.")
@@ -249,10 +211,9 @@ print("✓  You found the traceback." if "Traceback" in log_text else "✗  Not 
 
 # COMMAND ----------
 
-# ── TODO 4: which month finished "successfully" but produced nothing? ────────
-# Build a set of the months whose run is FINISHED with `metrics.record_count` == 0.
-#
-empty_months = set()   # ← replace this line
+# ── TODO 4 (solution) ────────────────────────────────────────────────────────
+finished = runs[runs["status"] == "FINISHED"]
+empty_months = set(finished[finished["metrics.record_count"] == 0]["params.month"])
 
 print("Empty months:", sorted(empty_months))
 print("✓  Correct." if empty_months == {_EMPTY} else "✗  Not yet — exactly one month is empty.")
@@ -268,10 +229,9 @@ print("✓  Correct." if empty_months == {_EMPTY} else "✗  Not yet — exactly
 months_to_rerun = sorted(failed_months | empty_months)
 print("Rerunning:", months_to_rerun)
 
-# ── TODO 5: backfill ─────────────────────────────────────────────────────────
-# The upstream problems are fixed: run the healthy job, MonthlyAgencyRevenueJob,
-# once for each month in months_to_rerun.
-#
+# ── TODO 5 (solution) ────────────────────────────────────────────────────────
+for month in months_to_rerun:
+    MonthlyAgencyRevenueJob(CONFIG_PATH).run(month=month)
 
 # COMMAND ----------
 
@@ -306,24 +266,13 @@ display(report)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Questions:
-# MAGIC 1. Which of the two problems would you have noticed without MLflow, and how late?
-# MAGIC 2. Rerunning a month did not create duplicates in the table. Which line of `load()` guarantees that?
-# MAGIC 3. What alert would you put on `record_count`? On `total_revenue`?
-# MAGIC 4. A month now has two runs in MLflow, one failed and one finished. Why is that useful?
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Key takeaways
+# MAGIC ## Answers to the questions
 # MAGIC
-# MAGIC | Question on call | Where MLflow answers it |
-# MAGIC |---|---|
-# MAGIC | Did every scheduled run happen? | one run per `params.month`, with a `status` |
-# MAGIC | Why did it fail? | `tags.error`, then `logs/run.log` |
-# MAGIC | Did it do anything? | `metrics.record_count` — a `FINISHED` run can still be empty |
-# MAGIC | Is the output plausible? | business metrics you log yourself, such as `total_revenue` |
-# MAGIC | What exactly ran? | the config file stored under `config/` |
-# MAGIC
-# MAGIC None of this needed tracking code in the job: `Job.run()` does it, and
-# MAGIC `self.log_metric()` adds what only you know about the business.
+# MAGIC 1. The failed months would surface when the scheduler alerts, or when an analyst
+# MAGIC    finds a hole. The empty month raises no error anywhere: without a
+# MAGIC    `record_count` metric it is found when someone questions the numbers.
+# MAGIC 2. `replaceWhere month = '...'` with `mode("overwrite")`: the job replaces its
+# MAGIC    own month, so it can be rerun safely (it is idempotent).
+# MAGIC 3. `record_count == 0` is a clear alert. For `total_revenue`, compare with the
+# MAGIC    previous months, for example a drop of more than 50%.
+# MAGIC 4. It is the audit trail: when the problem happened, why, and when it was fixed.

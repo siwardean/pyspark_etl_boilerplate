@@ -142,7 +142,8 @@ def test_stream_job_without_engine_explains_what_is_missing():
     class NoEngine(JobStream):
         def source(self): ...
         def transform(self): ...
-        def sink(self): ...
+        def sink(self):
+            return "handle"
 
     with pytest.raises(NotImplementedError, match="session mixin"):
         NoEngine(make_config(enabled=False)).run()
@@ -193,3 +194,13 @@ def test_run_params_are_validated_and_parsed(last_run):
         TypedJob(config).run(run_date="not a date")
     with pytest.raises(ValidationError, match="run_date"):
         TypedJob(config).run()
+
+
+def test_stream_job_whose_sink_returns_nothing_is_rejected():
+    class ForgotToReturn(JobStream):
+        def source(self): ...
+        def transform(self): ...
+        def sink(self): ...
+
+    with pytest.raises(ValueError, match="must start the stream and return its handle"):
+        ForgotToReturn(make_config(enabled=False)).run()
