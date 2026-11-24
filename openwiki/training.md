@@ -20,8 +20,8 @@ DreamAirlines, stored as CSV in `data/dreamAirlines_DW/`. The detailed guide is
 | `01` | data exploration | profile the data: no exercise |
 | `02` / `03` | ETL exercise and solution | build an analytics table step by step |
 | `04` | DataFrame API exercise | rewrite a SQL `JobBatch` with the DataFrame API: 4 TODOs |
-| `05` / `06` | streaming exercise and solution | write a `JobStream` with a checkpoint: 2 TODOs |
-| `07` / `08` | MLflow exercise and solution | find failed and empty runs, read logs, backfill: 5 TODOs |
+| `05` / `06` | MLflow exercise and solution | find failed and empty runs, read logs, backfill: 5 TODOs |
+| `07` / `08` | Spark streaming extra and solution | read and run a `JobStream`, then write one as a final challenge |
 
 Notebooks `04`, `05` and `07` use the framework classes, so what trainees
 practise maps directly to `jobs/`. Every TODO is followed by a check that tells
@@ -33,10 +33,14 @@ the trainee whether it is done.
 |---|---|---|
 | 0:00–0:15 | Architecture | slides, `jobs/` |
 | 0:15–0:50 | Batch job | notebook `04` |
-| 0:50–1:15 | Streaming job | notebook `05` |
-| 1:15–1:25 | Break | |
-| 1:25–1:55 | MLflow | notebook `07` |
+| 0:50–1:00 | Break | |
+| 1:00–1:30 | MLflow | notebook `05` |
+| 1:30–1:55 | Extra: Spark streaming demo and final challenge | notebook `07` |
 | 1:55–2:00 | Wrap-up | `jobs/examples/` |
+
+The streaming notebook is optional. Its first part is a short demo with nothing
+to fill in; its second part is one challenge, where trainees write a complete
+streaming job from a skeleton and pick the right output mode.
 
 ## Environment notes
 

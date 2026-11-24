@@ -177,7 +177,7 @@ def slide1_title(prs):
 
     # subtitle
     add_textbox(slide, Inches(0.65), Inches(3.1), Inches(9), Inches(0.4),
-                "Batch, streaming and MLflow.  Three exercises.  One mission.", 14,
+                "Batch, MLflow and a streaming extra.  One mission.", 14,
                 italic=True, color=GRAY, font_name="Calibri")
 
     # mission box background
@@ -325,7 +325,7 @@ def slide2_structure(prs):
 def slide3_assignment(prs):
     slide = blank_slide(prs)
     add_rect(slide, 0, 0, W, H, WHITE)
-    slide_header(slide, "The Assignment", "Three exercises — batch, streaming, MLflow")
+    slide_header(slide, "The Assignment", "Batch, MLflow — and a streaming extra")
 
     top = Inches(0.95)
     lx  = Inches(0.4)
@@ -340,10 +340,10 @@ def slide3_assignment(prs):
          "14 CSV files → dream_airlines_dw.* Delta tables.  Run it before the session."),
         ("04", "Batch — rewrite SQL as DataFrame API",
          "4 TODOs inside transform().  Check your result against the SQL version."),
-        ("05", "Stream — process only what is new",
-         "2 TODOs: turn the same logic into a streaming job with a checkpoint."),
-        ("07", "Operate — MLflow on call",
+        ("05", "Operate — MLflow on call",
          "5 TODOs: find failed and empty runs, read their logs, backfill."),
+        ("07", "Extra — Spark streaming",
+         "A short demo, then the final challenge: write your own streaming job."),
     ]
 
     sy = top + Inches(0.35)
@@ -445,7 +445,7 @@ def add_flow(slide, left, top, width, labels, highlight):
 def slide_streaming(prs):
     slide = blank_slide(prs)
     add_rect(slide, 0, 0, W, H, WHITE)
-    slide_header(slide, "Streaming", "From batch to stream — notebook 05")
+    slide_header(slide, "Extra", "Spark Structured Streaming — notebook 07")
 
     top = Inches(0.95)
     lx, rx = Inches(0.4), Inches(6.8)
@@ -487,19 +487,18 @@ def slide_streaming(prs):
                     note, 9, color=GRAY, font_name="Calibri")
 
     # ── RIGHT ────────────────────────────────────────────────────
-    section_label(slide, rx, top, "Your job in notebook 05")
+    section_label(slide, rx, top, "Part 1 — read and run: the whole job")
     code = (
         "class AgencyRevenueStreamJob(SparkSessionMixin, JobStream):\n"
         "\n"
         "    def source(self):\n"
         "        self.events = self.spark.readStream.table(\n"
         "            self.settings.source_table)\n"
-        "        self.agencies = self.spark.table(\"...dim_travel_agency\")\n"
         "\n"
-        "    def transform(self):\n"
-        "        # TODO 1  join each event with its agency (stream-static)\n"
-        "        # TODO 2  bookings and revenue per agency\n"
-        "        self.stream_df = ...\n"
+        "    def transform(self):          # ordinary DataFrame code\n"
+        "        self.stream_df = (self.events\n"
+        "            .groupBy(\"FK_TravelAgency\")\n"
+        "            .agg(F.count(\"*\"), F.sum(\"AMT_Travel\")))\n"
         "\n"
         "    def sink(self):\n"
         "        return (self.stream_df.writeStream\n"
@@ -508,14 +507,21 @@ def slide_streaming(prs):
         "            .trigger(availableNow=True)\n"
         "            .toTable(self.settings.target_table))"
     )
-    add_code_box(slide, rx, top + Inches(0.32), Inches(6.1), Inches(3.15), code, font_size=8.5)
+    add_code_box(slide, rx, top + Inches(0.32), Inches(6.1), Inches(2.95), code, font_size=8.5)
 
-    section_label(slide, rx, top + Inches(3.7), "Spark or Flink")
-    add_textbox(slide, rx, top + Inches(4.05), Inches(6.1), Inches(1.0),
-                "JobStream runs on either engine: add SparkSessionMixin or FlinkSessionMixin.\n"
-                "A SQL transform is shared through self.sql(); sources and sinks are\n"
-                "engine-specific.  See jobs/examples/booking_stream_job.py.",
-                9, color=GRAY, font_name="Calibri")
+    section_label(slide, rx, top + Inches(3.5), "Part 2 — final challenge")
+    add_rect(slide, rx, top + Inches(3.88), Inches(6.1), Inches(1.5), CHARCOAL)
+    add_rect(slide, rx, top + Inches(3.88), Inches(0.06), Inches(1.5), PURPLE_LIGHT)
+    add_textbox(slide, rx + Inches(0.2), top + Inches(3.95), Inches(5.8), Inches(0.3),
+                "PremiumBookingsStreamJob", 11, bold=True, color=WHITE, font_name="Courier New")
+    add_textbox(slide, rx + Inches(0.2), top + Inches(4.28), Inches(5.8), Inches(1.0),
+                "Every booking worth 1 000 or more, appended as soon as it arrives.\n"
+                "You write source(), transform() and sink() from a skeleton.\n"
+                "One decision is yours: output mode \"complete\" or \"append\"?",
+                9.5, color=WHITE, font_name="Calibri")
+    add_textbox(slide, rx, top + Inches(5.5), Inches(6.1), Inches(0.3),
+                "A new pipeline = one class + one config file.  The same job shape also runs on Flink.",
+                9, italic=True, color=GRAY, font_name="Calibri")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -525,7 +531,7 @@ def slide_streaming(prs):
 def slide_mlflow(prs):
     slide = blank_slide(prs)
     add_rect(slide, 0, 0, W, H, WHITE)
-    slide_header(slide, "MLflow", "Operate a pipeline you can trust — notebook 07")
+    slide_header(slide, "MLflow", "Operate a pipeline you can trust — notebook 05")
 
     top = Inches(0.95)
     lx, rx = Inches(0.4), Inches(6.8)
@@ -702,8 +708,8 @@ if __name__ == "__main__":
     slide1_title(prs)
     slide2_structure(prs)
     slide3_assignment(prs)
-    slide_streaming(prs)
     slide_mlflow(prs)
+    slide_streaming(prs)
     slide4_solutions(prs)
 
     out = os.path.join(os.path.dirname(__file__), "slides.pptx")

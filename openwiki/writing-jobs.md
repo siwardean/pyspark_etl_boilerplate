@@ -47,8 +47,8 @@ job where that is too expensive.
 ## Stream: `JobStream`
 
 Implement `source()`, `transform()` and `sink()`. They only describe the
-pipeline: `sink()` starts it and returns the running handle, and `JobStream`
-waits on that handle until the stream ends or `job.stream_timeout_seconds`
+pipeline: `sink()` starts it and must return the running handle (returning
+nothing is an error), and `JobStream` waits on that handle until the stream ends or `job.stream_timeout_seconds`
 elapses.
 
 ```python

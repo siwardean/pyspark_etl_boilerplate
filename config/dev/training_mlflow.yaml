@@ -1,4 +1,4 @@
-# Used by training/07_mlflow_exercise and 08_mlflow_solution on Databricks.
+# Used by training/05_mlflow_exercise and 06_mlflow_solution on Databricks.
 
 job:
   name: MonthlyAgencyRevenueJob

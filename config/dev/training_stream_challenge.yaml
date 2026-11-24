@@ -1,0 +1,20 @@
+# Used by the final challenge in training/07_spark_streaming_extra on Databricks.
+# A new job is one class plus one config file: same source, its own target and checkpoint.
+
+job:
+  name: PremiumBookingsStreamJob
+  env: dev
+  source_table: dream_airlines_dw.booking_events
+  target_table: analytics.premium_bookings_stream
+  checkpoint_path: /tmp/dreamairlines/checkpoints/premium_bookings_stream
+  min_amount: 1000
+
+spark:
+  spark.sql.shuffle.partitions: 8
+
+# The experiment is chosen in the notebook (one per trainee).
+mlflow:
+  enabled: true
+
+logging:
+  level: INFO

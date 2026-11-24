@@ -397,7 +397,7 @@ else:
 # MAGIC
 # MAGIC You wrote no tracking code, yet every run of both jobs was recorded, including
 # MAGIC the failed attempts. Run the cell below, then open the **Experiments** page in
-# MAGIC the left sidebar to see the same runs in the MLflow UI. Notebook `07` builds on this.
+# MAGIC the left sidebar to see the same runs in the MLflow UI. Notebook `05` builds on this.
 
 # COMMAND ----------
 

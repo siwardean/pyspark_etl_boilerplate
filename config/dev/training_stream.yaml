@@ -1,4 +1,4 @@
-# Used by training/05_job_stream_exercise on Databricks.
+# Used by the demo in training/07_spark_streaming_extra on Databricks.
 
 job:
   name: AgencyRevenueStreamJob
